@@ -47,33 +47,42 @@ select {
   margin: 0 auto;
 }
 
-/* ENCABEZADO */
+
+/* CORRECCIÓN DEL LOGO FITGEAR */
 
 .encabezado {
-  background: var(--oscuro);
-  border-bottom: 3px solid var(--turquesa);
+  background: #202927;
+  border-bottom: 3px solid #218579;
 }
 
 .barra-navegacion {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 25px;
-  min-height: 110px;
-}
-
-.marca {
-  display: inline-flex;
-  align-items: center;
+  min-height: 95px;
+  gap: 24px;
 }
 
 .logo-imagen {
   display: block;
-  width: 235px;
+  width: 220px;
   max-width: 100%;
   height: auto;
-  border-radius: 6px;
+  object-fit: contain;
+  border-radius: 5px;
 }
+
+@media (max-width: 600px) {
+  .barra-navegacion {
+    flex-direction: column;
+    padding: 16px 0;
+  }
+
+  .logo-imagen {
+    width: 180px;
+  }
+}
+
 
 .navegacion {
   display: flex;
