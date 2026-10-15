@@ -10,5 +10,8 @@ const controlador = new CatalogoController(modelo, vista);
 
 controlador.iniciar();
 
-document.getElementById("anio-actual").textContent =
-  new Date().getFullYear();
+const anio = document.querySelector("#anio-actual");
+
+if (anio) {
+  anio.textContent = new Date().getFullYear();
+}

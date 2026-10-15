@@ -3,22 +3,23 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description"
-        content="FitGear Venta y Renta. Equipamiento comercial para gimnasios.">
-  <title>FitGear | Venta y Renta</title>
+  <meta name="viewport"
+        content="width=device-width, initial-scale=1.0">
 
- 
-  <link rel="stylesheet" href="./css/style.css">
-  
+  <meta name="description"
+        content="FitGear Venta y Renta. Equipos comerciales para gimnasios.">
+
+  <title>FitGear | Venta y Renta de Equipos</title>
+
+  <link rel="stylesheet" href="./css/style.css?v=4">
+
   <script type="module" src="./js/app.js"></script>
-  
 </head>
 
 <body>
   <header class="encabezado">
     <div class="contenedor barra-navegacion">
-      <a class="marca" href="./index.html" aria-label="Inicio FitGear">
+      <a href="#inicio" class="marca">
         <img
           src="./Logo%20Fit%20Gear.png"
           alt="FitGear Venta y Renta"
@@ -26,7 +27,7 @@
         >
       </a>
 
-      <nav class="navegacion" aria-label="Navegación principal">
+      <nav class="menu">
         <a href="#inicio">Inicio</a>
         <a href="#catalogo">Catálogo</a>
         <a href="#contacto">Contacto</a>
@@ -35,9 +36,11 @@
   </header>
 
   <main>
-    <section id="inicio" class="hero">
+    <section class="hero" id="inicio">
       <div class="contenedor hero-contenido">
-        <span class="etiqueta">EQUIPAMIENTO COMERCIAL</span>
+        <span class="etiqueta">
+          EQUIPAMIENTO COMERCIAL
+        </span>
 
         <h1>Equipa tu gimnasio con lo mejor</h1>
 
@@ -47,11 +50,11 @@
         </p>
 
         <div class="hero-acciones">
-          <a class="btn btn-principal" href="#catalogo">
+          <a href="#catalogo" class="boton boton-principal">
             Explorar catálogo
           </a>
 
-          <a class="btn btn-secundario" href="#contacto">
+          <a href="#contacto" class="boton boton-secundario">
             Contáctanos
           </a>
         </div>
@@ -60,27 +63,32 @@
 
     <section class="beneficios">
       <div class="contenedor beneficios-grid">
-        <div>
-          <strong>Equipos comerciales</strong>
+        <article>
+          <h3>Equipos comerciales</h3>
           <p>Máquinas para gimnasios profesionales.</p>
-        </div>
+        </article>
 
-        <div>
-          <strong>Marcas reconocidas</strong>
-          <p>Hammer Strength, Life Fitness, Cybex y Nautilus.</p>
-        </div>
+        <article>
+          <h3>Marcas reconocidas</h3>
+          <p>
+            Hammer Strength, Life Fitness,
+            Cybex y Nautilus.
+          </p>
+        </article>
 
-        <div>
-          <strong>Venta y preventa</strong>
-          <p>Consulta disponibilidad y solicita información.</p>
-        </div>
+        <article>
+          <h3>Venta y preventa</h3>
+          <p>
+            Consulta disponibilidad y solicita información.
+          </p>
+        </article>
       </div>
     </section>
 
-    <section id="catalogo" class="seccion-catalogo">
+    <section class="seccion-catalogo" id="catalogo">
       <div class="contenedor">
-        <div class="seccion-encabezado">
-          <span class="etiqueta etiqueta-oscura">NUESTROS EQUIPOS</span>
+        <div class="titulo-seccion">
+          <span class="subtitulo">NUESTROS EQUIPOS</span>
           <h2>Catálogo de máquinas</h2>
           <p>
             Explora nuestros equipos por marca y categoría.
@@ -89,10 +97,12 @@
 
         <div class="filtros">
           <div class="campo">
-            <label for="buscar-producto">Buscar máquina</label>
+            <label for="buscar-producto">
+              Buscar máquina
+            </label>
             <input
-              id="buscar-producto"
               type="search"
+              id="buscar-producto"
               placeholder="Ej. prensa, pecho, remo..."
             >
           </div>
@@ -112,49 +122,44 @@
           </div>
         </div>
 
-        <p id="contador-productos" class="contador" aria-live="polite"></p>
+        <p id="contador-productos" class="contador"></p>
 
-        <div id="lista-productos" class="productos-grid">
-          <!-- La vista MVC insertará los productos aquí -->
+        <div id="lista-productos" class="grid-productos">
         </div>
 
-        <p id="mensaje-vacio" class="mensaje-vacio" hidden>
+        <p id="mensaje-vacio" class="estado-catalogo" hidden>
           No encontramos máquinas con esos filtros.
         </p>
       </div>
     </section>
 
-    <section id="contacto" class="seccion-contacto">
+    <section class="contacto" id="contacto">
       <div class="contenedor contacto-contenido">
-        <span class="etiqueta">FITGEAR VENTA Y RENTA</span>
+        <span class="subtitulo">FITGEAR VENTA Y RENTA</span>
 
-        <h2>¿Buscas equipar tu gimnasio?</h2>
+        <h2>¿Estás equipando tu gimnasio?</h2>
 
         <p>
-          Cuéntanos qué máquinas necesitas y te ayudaremos
-          a encontrar opciones para tu proyecto.
+          Solicita información sobre nuestras máquinas,
+          disponibilidad y opciones de compra.
         </p>
 
         <a
-          class="btn btn-principal"
-          href="mailto:ventas@ejemplo.com?subject=Consulta%20de%20equipos%20FitGear"
-          id="enlace-contacto"
+          class="boton boton-principal"
+          href="mailto:ventas@ejemplo.com"
         >
-          Solicitar información
+          Solicitar cotización
         </a>
-
-        <small>
-          Próximamente habilitaremos el formulario de cotizaciones
-          conectado a nuestra base de datos.
-        </small>
       </div>
     </section>
   </main>
 
-  <footer class="pie-pagina">
+  <footer class="pie">
     <div class="contenedor">
-      <p>© <span id="anio-actual"></span> FitGear Venta y Renta.</p>
-      <p>Equipamiento comercial para gimnasios.</p>
+      <p>
+        © <span id="anio-actual"></span>
+        FitGear Venta y Renta.
+      </p>
     </div>
   </footer>
 </body>

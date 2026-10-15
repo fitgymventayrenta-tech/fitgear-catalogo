@@ -1,68 +1,98 @@
 
+import { supabaseConfig } from "../config/supabase.js";
+
 export class ProductoModel {
   constructor() {
-    // Datos temporales para probar el catálogo.
-    // Después vendrán desde PostgreSQL en Supabase.
-    this.productos = [
-      {
-        id: 1,
-        nombre: "Linear Leg Press",
-        marca: "Hammer Strength",
-        categoria: "Piernas",
-        descripcion: "Prensa de piernas comercial.",
-        imagen: "",
-        estado: "Demostración"
-      },
-      {
-        id: 2,
-        nombre: "Iso-Lateral Shoulder Press",
-        marca: "Hammer Strength",
-        categoria: "Hombros",
-        descripcion: "Máquina de press de hombros.",
-        imagen: "",
-        estado: "Demostración"
-      },
-      {
-        id: 3,
-        nombre: "Signature Chest Press",
-        marca: "Life Fitness",
-        categoria: "Pecho",
-        descripcion: "Máquina comercial para entrenamiento de pecho.",
-        imagen: "",
-        estado: "Demostración"
-      },
-      {
-        id: 4,
-        nombre: "Equipo de fuerza Cybex",
-        marca: "Cybex",
-        categoria: "Fuerza",
-        descripcion: "Ejemplo de producto para configurar el catálogo.",
-        imagen: "",
-        estado: "Demostración"
-      }
-    ];
+    this.productos = [];
   }
 
-  obtenerTodos() {
+  async obtenerTodos() {
+    const { url, key } = supabaseConfig;
+
+    if (
+      !url.startsWith("https://") ||
+      !key ||
+      key.includes("PEGA_AQUI")
+    ) {
+      throw new Error(
+        "Configura la URL y la Publishable key de Supabase."
+      );
+    }
+
+    const endpoint =
+      `${url}/rest/v1/productos` +
+      "?select=*" +
+      "&publicado=eq.true" +
+      "&order=creado_en.desc";
+
+    const respuesta = await fetch(endpoint, {
+      method: "GET",
+      headers: {
+        apikey: key,
+   
+        Accept: "application/json"
+      }
+
+
+      
+    });
+
+    if (!respuesta.ok) {
+      let detalle = "";
+
+      try {
+        const error = await respuesta.json();
+        detalle = error.message || error.error || "";
+      } catch {
+        detalle = await respuesta.text();
+      }
+
+      throw new Error(
+        `Error Supabase (${respuesta.status}): ${detalle}`
+      );
+    }
+
+    const registros = await respuesta.json();
+
+    this.productos = registros.map((producto) => ({
+      id: producto.id,
+      nombre: producto.nombre ?? "",
+      marca: producto.marca ?? "",
+      categoria: producto.categoria ?? "",
+      descripcion: producto.descripcion ?? "",
+      precio: producto.precio,
+      moneda: producto.moneda ?? "GTQ",
+      existencias: producto.existencias ?? 0,
+      color: producto.color ?? "",
+      peso_kg: producto.peso_kg,
+      dimensiones: producto.dimensiones ?? "",
+      imagen: producto.imagen_url ?? "",
+      estado: producto.estado ?? "consultar"
+    }));
+
     return [...this.productos];
   }
 
   obtenerMarcas() {
     return [...new Set(
-      this.productos.map(producto => producto.marca)
+      this.productos.map(p => p.marca).filter(Boolean)
     )].sort();
   }
 
   obtenerCategorias() {
     return [...new Set(
-      this.productos.map(producto => producto.categoria)
+      this.productos.map(p => p.categoria).filter(Boolean)
     )].sort();
   }
 
-  filtrar({ busqueda = "", marca = "", categoria = "" }) {
+  filtrar({
+    busqueda = "",
+    marca = "",
+    categoria = ""
+  } = {}) {
     const texto = busqueda.trim().toLocaleLowerCase("es");
 
-    return this.productos.filter(producto => {
+    return this.productos.filter((producto) => {
       const contenido = [
         producto.nombre,
         producto.marca,
@@ -70,14 +100,11 @@ export class ProductoModel {
         producto.descripcion
       ].join(" ").toLocaleLowerCase("es");
 
-      const coincideBusqueda = contenido.includes(texto);
-      const coincideMarca = !marca || producto.marca === marca;
-      const coincideCategoria =
-        !categoria || producto.categoria === categoria;
-
-      return coincideBusqueda &&
-             coincideMarca &&
-             coincideCategoria;
+      return (
+        (!texto || contenido.includes(texto)) &&
+        (!marca || producto.marca === marca) &&
+        (!categoria || producto.categoria === categoria)
+      );
     });
   }
 }

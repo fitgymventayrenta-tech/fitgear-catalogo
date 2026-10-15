@@ -5,27 +5,31 @@ export class CatalogoController {
     this.vista = vista;
   }
 
-  iniciar() {
-    const marcas = this.modelo.obtenerMarcas();
-    const categorias = this.modelo.obtenerCategorias();
-
-    this.vista.configurarFiltros(marcas, categorias);
-
-    this.vista.mostrarProductos(
-      this.modelo.obtenerTodos()
-    );
+  async iniciar() {
+    this.vista.mostrarCargando();
 
     this.vista.escucharFiltros(() => {
       this.actualizarCatalogo();
     });
+
+    try {
+      await this.modelo.obtenerTodos();
+
+      this.vista.configurarFiltros(
+        this.modelo.obtenerMarcas(),
+        this.modelo.obtenerCategorias()
+      );
+
+      this.actualizarCatalogo();
+    } catch (error) {
+      console.error("Error al cargar FitGear:", error);
+      this.vista.mostrarError(error);
+    }
   }
 
   actualizarCatalogo() {
     const filtros = this.vista.obtenerFiltros();
-
-    const productosFiltrados =
-      this.modelo.filtrar(filtros);
-
-    this.vista.mostrarProductos(productosFiltrados);
+    const productos = this.modelo.filtrar(filtros);
+    this.vista.mostrarProductos(productos);
   }
 }
