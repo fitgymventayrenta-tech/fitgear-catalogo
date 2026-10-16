@@ -44,7 +44,7 @@ export class AdminModel {
       ...opciones.headers
     };
 
-    const urlCompleta = new URL(ruta, this.url).toString();
+    const urlCompleta = `${this.url}${ruta}`;
 
     const respuesta = await fetch(urlCompleta, {
       ...opciones,
