@@ -3,10 +3,28 @@ import { supabaseConfig } from "../../../js/config/supabase.js";
 
 export class AdminModel {
   constructor() {
-    this.url = supabaseConfig.url;
-    this.key = supabaseConfig.key;
+    this.url = String(supabaseConfig.url || "")
+      .trim()
+      .replace(/\/+$/, "");
+
+    this.key = String(supabaseConfig.key || "").trim();
+
     this.token = null;
     this.expira = 0;
+
+    if (!/^https:\/\/[a-z0-9-]+\.supabase\.co$/i.test(this.url)) {
+      throw new Error(
+        "La Project URL de Supabase es incorrecta. " +
+        "Revisa js/config/supabase.js."
+      );
+    }
+
+    if (!this.key.startsWith("sb_publishable_") &&
+        !this.key.startsWith("eyJ")) {
+      throw new Error(
+        "La Publishable key de Supabase no es válida."
+      );
+    }
   }
 
   async solicitar(ruta, opciones = {}, autenticado = true) {
@@ -26,7 +44,9 @@ export class AdminModel {
       ...opciones.headers
     };
 
-    const respuesta = await fetch(this.url + ruta, {
+    const urlCompleta = new URL(ruta, this.url).toString();
+
+    const respuesta = await fetch(urlCompleta, {
       ...opciones,
       headers
     });
@@ -36,7 +56,9 @@ export class AdminModel {
 
       try {
         const datos = await respuesta.json();
-        detalle = datos.message ||
+        detalle =
+          datos.msg ||
+          datos.message ||
           datos.error_description ||
           datos.error ||
           detalle;
@@ -60,12 +82,22 @@ export class AdminModel {
       "/auth/v1/token?grant_type=password",
       {
         method: "POST",
-        body: JSON.stringify({ email, password })
+        body: JSON.stringify({
+          email: email.trim(),
+          password
+        })
       },
       false
     );
 
+    if (!datos.access_token) {
+      throw new Error(
+        "Supabase no devolvió un token de acceso."
+      );
+    }
+
     this.token = datos.access_token;
+
     this.expira = Date.now() +
       (datos.expires_in || 3600) * 1000;
 
@@ -124,7 +156,9 @@ export class AdminModel {
         `/rest/v1/productos?id=eq.${encodeURIComponent(id)}`,
         {
           method: "PATCH",
-          headers: { Prefer: "return=representation" },
+          headers: {
+            Prefer: "return=representation"
+          },
           body: JSON.stringify(datos)
         }
       );
@@ -134,7 +168,9 @@ export class AdminModel {
       "/rest/v1/productos",
       {
         method: "POST",
-        headers: { Prefer: "return=representation" },
+        headers: {
+          Prefer: "return=representation"
+        },
         body: JSON.stringify(datos)
       }
     );
@@ -145,7 +181,9 @@ export class AdminModel {
 
     return await this.solicitar(
       `/rest/v1/productos?id=eq.${encodeURIComponent(id)}`,
-      { method: "DELETE" }
+      {
+        method: "DELETE"
+      }
     );
   }
 
