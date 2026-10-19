@@ -396,3 +396,5 @@ button{cursor:pointer;font:inherit}button:focus-visible{outline:3px solid var(--
 .hero-contenido{position:relative}
 .hero h1,.hero p,.hero .etiqueta{text-shadow:0 2px 8px #0009}
 @media(max-width:600px){.hero::before{background-size:120% auto}}
+
+.lista-seleccion .opcion-maquina input{width:auto;min-width:18px;min-height:18px;margin-right:6px}.producto-contenido{min-width:0;overflow-wrap:anywhere}.boton,.boton-cotizar,.boton-detalles{min-height:44px}.detalle-miniaturas button{min-height:44px}@media(max-width:450px){.solicitud-formulario{padding:16px}.acciones-solicitud>*{width:100%}.barra-interes{padding:14px}.barra-interes .boton{width:100%}}

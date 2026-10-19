@@ -49,7 +49,7 @@ CREATE INDEX IF NOT EXISTS idx_solicitudes_fecha ON public.solicitudes(creado_en
 CREATE INDEX IF NOT EXISTS idx_solicitud_productos_id ON public.solicitud_productos(producto_id);
 ALTER TABLE public.solicitudes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.solicitud_productos ENABLE ROW LEVEL SECURITY;
-REVOKE ALL ON public.solicitudes,public.solicitud_productos FROM anon,authenticated;
+REVOKE ALL ON public.solicitudes,public.solicitud_productos FROM PUBLIC,anon,authenticated;
 GRANT SELECT,UPDATE ON public.solicitudes TO authenticated;
 GRANT SELECT ON public.solicitud_productos TO authenticated;
 DROP POLICY IF EXISTS fitgear_admin_solicitudes_select ON public.solicitudes;
@@ -73,6 +73,8 @@ BEGIN
     btrim(p_correo) !~* '^[^[:space:]@]+@[^[:space:]@]+\.[^[:space:]@]+$' THEN RAISE EXCEPTION 'Correo inválido'; END IF;
  IF length(coalesce(p_mensaje,''))>2000 THEN RAISE EXCEPTION 'Mensaje demasiado largo'; END IF;
  IF p_productos IS NULL OR cardinality(p_productos) NOT BETWEEN 1 AND 20 THEN RAISE EXCEPTION 'Selecciona entre 1 y 20 máquinas'; END IF;
+ -- Conserva las máquinas elegidas mientras se registra la relación.
+ PERFORM id FROM public.productos WHERE id=ANY(p_productos) AND publicado=true FOR SHARE;
  SELECT count(*) INTO total FROM public.productos WHERE id=ANY(p_productos) AND publicado=true;
  IF total<>cardinality(p_productos) OR total<>(SELECT count(DISTINCT x) FROM unnest(p_productos) AS x)
  THEN RAISE EXCEPTION 'La selección de máquinas no es válida'; END IF;

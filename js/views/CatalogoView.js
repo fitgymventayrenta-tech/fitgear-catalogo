@@ -140,7 +140,7 @@ export class CatalogoView {
         producto.precio !== undefined) {
       const numero = Number(producto.precio);
       precio.textContent =
-        `${producto.moneda} ${numero.toLocaleString("es-GT", {
+        `Q ${numero.toLocaleString("es-GT", {
           minimumFractionDigits: 2,
           maximumFractionDigits: 2
         })}`;
@@ -163,7 +163,7 @@ export class CatalogoView {
     enlace.addEventListener('click',()=>this.onSeleccion(producto.id));
     const estado=document.createElement('p');estado.className='producto-estado';
     const disponible=producto.existencias>0&&producto.estado==='disponible';
-    estado.textContent=disponible?'Disponible':producto.estado==='reservada'?'Reservada':'Vendida / sin existencias';
+    estado.textContent=disponible?'Disponible':producto.existencias>0&&producto.estado==='reservada'?'Reservada':'Vendida / sin existencias';
     if(!disponible)estado.classList.add('no-disponible');
     const oferta=document.createElement('span');oferta.className='insignia-oferta';oferta.textContent='EN OFERTA';oferta.hidden=!producto.oferta;
     enlace.textContent=this.seleccion.has(producto.id)?'✓ Seleccionada':'Me interesa';
@@ -206,11 +206,11 @@ export class CatalogoView {
       const img=crear('img');img.src=fotos[actual];img.alt=principal.alt;ampliada.append(boton('Cerrar fotografía',()=>ampliada.close()),img);
       ampliada.addEventListener('close',()=>ampliada.remove());document.body.append(ampliada);ampliada.showModal();
     }));
-    const info=crear('section','detalle-info');info.append(crear('span','producto-marca',producto.marca),crear('h2','',producto.nombre),crear('p','',`Área de entrenamiento: ${producto.area||producto.categoria||'Por completar'}`),crear('p','',`Clasificación: ${producto.clasificacion||producto.categoria||'Por completar'}`));
+    const info=crear('section','detalle-info');info.append(crear('span','producto-marca',producto.marca),crear('h2','',producto.nombre));if(producto.oferta)info.append(crear('span','insignia-oferta','EN OFERTA'));
     const fichas=crear('div','detalle-fichas');
-    for(const [etiqueta,valor] of [['Descripción del equipo',producto.descripcion],['Características principales',producto.caracteristicas],['Grupo muscular trabajado',producto.grupo_muscular],['Características técnicas',producto.caracteristicas_tecnicas],['Dimensiones',producto.dimensiones],['Peso del equipo',producto.peso_kg==null?null:`${producto.peso_kg} kg`],['Colores disponibles',producto.color],['Materiales',producto.materiales],['Capacidad de carga',producto.capacidad_carga]]){const ficha=crear('article');ficha.append(crear('h3','',etiqueta),crear('p','',valor||'Pendiente de completar'));fichas.append(ficha);}
+    for(const [etiqueta,valor] of [['Descripción del equipo',producto.descripcion],['Características principales',producto.caracteristicas],['Grupo muscular trabajado',producto.grupo_muscular],['Características técnicas',producto.caracteristicas_tecnicas],['Dimensiones',producto.dimensiones],['Peso del equipo',producto.peso_kg==null?null:`${producto.peso_kg} kg`],['Colores disponibles',producto.color],['Materiales',producto.materiales],['Capacidad de carga',producto.capacidad_carga]]){if(valor===null||valor===undefined||valor==='')continue;const ficha=crear('article');ficha.append(crear('h3','',etiqueta),crear('p','',valor||'Pendiente de completar'));fichas.append(ficha);}
     const inventario=crear('div','detalle-inventario');
-    for(const [etiqueta,valor] of [['Precio',producto.precio==null?'Precio a consultar':`${producto.moneda} ${Number(producto.precio).toLocaleString('es-GT',{minimumFractionDigits:2})}`],['Existencias',`${producto.existencias} · ${producto.estado}`]]){const bloque=crear('div');bloque.append(crear('strong','',etiqueta),crear('p','',valor));inventario.append(bloque);}
+    for(const [etiqueta,valor] of [['Precio',producto.precio==null?'Precio a consultar':`Q ${Number(producto.precio).toLocaleString('es-GT',{minimumFractionDigits:2})}`],['Existencias',`${producto.existencias} · ${producto.existencias<=0?'Vendida / sin existencias':producto.estado==='reservada'?'Reservada':producto.estado==='disponible'?'Disponible':'Vendida'}`]]){const bloque=crear('div');bloque.append(crear('strong','',etiqueta),crear('p','',valor));inventario.append(bloque);}
     const interes=boton(this.seleccion.has(producto.id)?'✓ Seleccionada':'Me interesa',()=>{this.onSeleccion(producto.id);interes.textContent=this.seleccion.has(producto.id)?'✓ Seleccionada':'Me interesa';});
     info.append(fichas,inventario,interes);grid.append(galeria,info);dialogo.append(nav,grid);
     dialogo.addEventListener('close',()=>{dialogo.remove();origen.focus();});document.body.append(dialogo);dialogo.showModal();

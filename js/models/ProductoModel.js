@@ -62,13 +62,13 @@ export class ProductoModel {
       categoria: producto.categoria ?? "",
       descripcion: producto.descripcion ?? "",
       precio: producto.precio,
-      moneda: producto.moneda ?? "GTQ",
+      moneda: "GTQ",
       existencias: producto.existencias ?? 0,
       color: producto.color ?? "",
       peso_kg: producto.peso_kg,
       dimensiones: producto.dimensiones ?? "",
       imagen: producto.imagen_url ?? "",
-      estado: producto.estado ?? "vendida",
+      estado: Number(producto.existencias) <= 0 ? "vendida" : producto.estado ?? "vendida",
       oferta: Boolean(producto.oferta),
       imagenes: Array.isArray(producto.imagenes) ? producto.imagenes : []
     }));
@@ -77,6 +77,15 @@ export class ProductoModel {
   }
 
   async enviarSolicitud(datos) {
+    if (typeof datos.nombre !== 'string' || datos.nombre.trim().length < 3 || datos.nombre.trim().length > 120 ||
+        typeof datos.telefono !== 'string' || !/^\+?[0-9 ()-]{8,22}$/.test(datos.telefono.trim()) || datos.telefono.replace(/\D/g,'').length < 8 ||
+        typeof datos.correo !== 'string' || datos.correo.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(datos.correo.trim()) ||
+        typeof datos.mensaje !== 'string' || datos.mensaje.length > 2000 ||
+        !Array.isArray(datos.productos) || datos.productos.length < 1 || datos.productos.length > 20 ||
+        new Set(datos.productos.map(String)).size !== datos.productos.length ||
+        !datos.productos.every(id => this.productos.some(p => String(p.id) === String(id)))) {
+      throw new Error('Revisa tus datos y selecciona entre 1 y 20 máquinas del catálogo.');
+    }
     const {url,key}=supabaseConfig;
     const respuesta=await fetch(`${url}/rest/v1/rpc/registrar_solicitud`,{
       method:'POST',headers:{apikey:key,'Content-Type':'application/json',Accept:'application/json'},

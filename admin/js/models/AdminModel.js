@@ -68,7 +68,9 @@ export class AdminModel {
         this.cerrarSesion();
       }
 
-      throw new Error(detalle);
+      const error = new Error(detalle);
+      error.respuestaHttp = respuesta.status;
+      throw error;
     }
 
     if (respuesta.status === 204) return null;
@@ -149,10 +151,11 @@ export class AdminModel {
   async guardarProducto(producto) {
     this.comprobarSesion();
 
+    this.validarProducto(producto);
     const { id, ...datos } = producto;
 
     if (id) {
-      return await this.solicitar(
+      const resultado = await this.solicitar(
         `/rest/v1/productos?id=eq.${encodeURIComponent(id)}`,
         {
           method: "PATCH",
@@ -162,29 +165,53 @@ export class AdminModel {
           body: JSON.stringify(datos)
         }
       );
+      if (!resultado?.length) throw new Error("La máquina no existe o no tienes permiso para editarla.");
+      return resultado;
     }
 
-    return await this.solicitar(
-      "/rest/v1/productos",
-      {
-        method: "POST",
-        headers: {
-          Prefer: "return=representation"
-        },
-        body: JSON.stringify(datos)
-      }
-    );
+    const resultado = await this.solicitar('/rest/v1/productos', {
+      method: 'POST', headers: { Prefer: 'return=representation' }, body: JSON.stringify(datos)
+    });
+    if (!resultado?.length) throw new Error('No se pudo confirmar el registro de la máquina.');
+    return resultado;
   }
 
   async eliminarProducto(id) {
     this.comprobarSesion();
+    const resultado = await this.solicitar(`/rest/v1/productos?id=eq.${encodeURIComponent(id)}`, {
+      method: 'DELETE', headers: { Prefer: 'return=representation' }
+    });
+    if (!resultado?.length) throw new Error('La máquina no existe o no tienes permiso para eliminarla.');
+    return resultado;
+  }
 
-    return await this.solicitar(
-      `/rest/v1/productos?id=eq.${encodeURIComponent(id)}`,
-      {
-        method: "DELETE"
-      }
-    );
+  validarProducto(producto) {
+    if (!producto.nombre?.trim() || producto.nombre.length > 160 ||
+        !producto.marca?.trim() || producto.marca.length > 100 ||
+        typeof producto.descripcion !== 'string' || producto.descripcion.length > 5000 ||
+        !Number.isSafeInteger(producto.existencias) || producto.existencias < 0 ||
+        !Number.isFinite(producto.precio) || producto.precio < 0 || producto.precio > 9999999999 ||
+        !['disponible','reservada','vendida'].includes(producto.estado)) {
+      throw new Error('Revisa el nombre, marca, descripción, precio, existencias y estado de la máquina.');
+    }
+    if (producto.existencias === 0) producto.estado = 'vendida';
+    if (producto.existencias > 0 && producto.estado === 'vendida') {
+      throw new Error('Para marcar toda la máquina como vendida, establece las existencias en cero. Si vendiste una unidad, reduce las existencias y conserva disponible si quedan unidades.');
+    }
+  }
+
+  async validarContenidoImagen(archivo) {
+    this.validarImagen(archivo);
+    const b = new Uint8Array(await archivo.slice(0, 32).arrayBuffer());
+    const texto = (inicio, fin) => String.fromCharCode(...b.slice(inicio, fin));
+    const valido = {
+      'image/jpeg': b[0] === 255 && b[1] === 216 && b[2] === 255,
+      'image/png': b[0] === 137 && texto(1, 4) === 'PNG' && b[4] === 13 && b[5] === 10 && b[6] === 26 && b[7] === 10,
+      'image/webp': texto(0, 4) === 'RIFF' && texto(8, 12) === 'WEBP',
+      'image/gif': ['GIF87a','GIF89a'].includes(texto(0, 6)),
+      'image/avif': texto(4, 8) === 'ftyp' && /avif|avis/.test(texto(8, 32))
+    }[archivo.type];
+    if (!valido) throw new Error('El contenido del archivo no coincide con el formato de imagen indicado.');
   }
 
   validarImagen(archivo) {
@@ -194,7 +221,7 @@ export class AdminModel {
   }
 
   async subirImagen(archivo) {
-    this.comprobarSesion();this.validarImagen(archivo);
+    this.comprobarSesion();await this.validarContenidoImagen(archivo);
     const extension=({'image/jpeg':'jpg','image/png':'png','image/webp':'webp','image/gif':'gif','image/avif':'avif'})[archivo.type];
     const ruta=`${crypto.randomUUID()}.${extension}`;
     const respuesta=await fetch(`${this.url}/storage/v1/object/maquinas/${ruta}`,{method:'POST',headers:{apikey:this.key,Authorization:`Bearer ${this.token}`,'Content-Type':archivo.type,'x-upsert':'false'},body:archivo});
@@ -203,6 +230,7 @@ export class AdminModel {
   }
 
   async eliminarImagen(url) {
+    this.comprobarSesion();
     const prefijo=`${this.url}/storage/v1/object/public/maquinas/`;
     if(!url.startsWith(prefijo))return;
     const ruta=url.slice(prefijo.length);
@@ -218,7 +246,9 @@ export class AdminModel {
   async actualizarSolicitud(id,estado) {
     this.comprobarSesion();
     if(!['pendiente','contactado','finalizado'].includes(estado))throw new Error('Estado de seguimiento inválido.');
-    return await this.solicitar(`/rest/v1/solicitudes?id=eq.${encodeURIComponent(id)}`,{method:'PATCH',body:JSON.stringify({estado})});
+    const resultado=await this.solicitar(`/rest/v1/solicitudes?id=eq.${encodeURIComponent(id)}`,{method:'PATCH',headers:{Prefer:'return=representation'},body:JSON.stringify({estado})});
+    if(!resultado?.length)throw new Error('La solicitud no existe o no tienes permiso para actualizarla.');
+    return resultado;
   }
 
   cerrarSesion() {
