@@ -1,4 +1,4 @@
-import { ESTADOS_COMERCIALES, metricasComerciales, moneda, fecha, telefonoNormalizado, precioProducto } from "../../../js/utils/comercial.js?v=14";
+import { ESTADOS_COMERCIALES, metricasComerciales, moneda, fecha, telefonoNormalizado, precioProducto } from "../../../js/utils/comercial.js?v=15";
 export class AdminView {
  constructor(){this.login=document.querySelector('#login');this.panel=document.querySelector('#administracion');this.formLogin=document.querySelector('#form-login');this.formProducto=document.querySelector('#form-producto');this.lista=document.querySelector('#lista-admin');this.mensaje=document.querySelector('#mensaje');this.titulo=document.querySelector('#titulo-formulario');this.salir=document.querySelector('#cerrar-sesion');this.guardar=document.querySelector('#guardar-producto');this.previa=document.querySelector('#vista-previa');this.previewUrl=null;this.imagenActual=null;}
  mostrarPanel(ok){this.login.hidden=ok;this.panel.hidden=!ok;this.salir.hidden=!ok;if(ok)this.mostrarSeccion('dashboard');else this.resumirSolicitudes(null);}
@@ -75,7 +75,7 @@ export class AdminView {
     for(const [etiqueta,valor] of filas){if(valor===null||valor===undefined||valor==='')continue;const grupo=this.elemento('div');grupo.append(this.elemento('dt','',etiqueta),this.elemento('dd','',String(valor)));dl.append(grupo);}return dl;
   }
  mostrarProductos(productos,editar,eliminar){
-    this.productos=productos;
+    this.productos=productos;this.actualizarVistaCatalogo();
     document.querySelector('#resumen-inventario').textContent=`${productos.length} máquinas · ${productos.filter(p=>p.publicado).length} publicadas · ${productos.filter(p=>!p.publicado).length} sin publicar · ${productos.reduce((t,p)=>t+Number(p.existencias||0),0)} unidades`;
     this.lista.replaceChildren();if(!productos.length){this.lista.textContent='No hay máquinas registradas.';return;}
     for(const p of productos){
@@ -86,7 +86,19 @@ export class AdminView {
       fila.append(info,acciones);this.lista.append(fila);
     }
   }
+  actualizarVistaCatalogo(){
+    const modo=this.vistaCatalogo||'inventario',previa=modo!=='inventario';
+    document.querySelector('#inventario-productos').hidden=previa;
+    document.querySelector('#catalogo-vista-cliente').hidden=!previa;
+    for(const b of document.querySelectorAll('[data-vista-catalogo]')){if(b.dataset.vistaCatalogo===modo)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current');}
+    document.querySelector('#titulo-vista-catalogo').textContent=modo==='publicadas'?'Máquinas publicadas':'Vista previa de todas las máquinas';
+    document.querySelector('#ayuda-vista-catalogo').textContent=modo==='publicadas'?'Solo las máquinas publicadas. Así se muestran sus fotografías, precios y especificaciones al cliente.':'Todas las máquinas, incluidas las que aún no publicaste. Revisa sus fotos y especificaciones sin hacerlas visibles al cliente.';
+    if(previa)document.querySelector('#vista-cliente-catalogo').contentWindow?.postMessage({tipo:'fitgear-vista-catalogo',modo,productos:modo==='publicadas'?(this.productos||[]).filter(p=>p.publicado):(this.productos||[])},location.origin);
+  }
   configurarComercial() {
+    for(const b of document.querySelectorAll('[data-vista-catalogo]'))b.onclick=()=>{this.vistaCatalogo=b.dataset.vistaCatalogo;this.actualizarVistaCatalogo();};
+    document.querySelector('#vista-cliente-catalogo').addEventListener('load',()=>this.actualizarVistaCatalogo());
+    window.addEventListener('message',e=>{if(e.origin===location.origin&&e.source===document.querySelector('#vista-cliente-catalogo').contentWindow&&e.data?.tipo==='fitgear-vista-lista')this.actualizarVistaCatalogo();});
     document.querySelectorAll('[data-clientes]').forEach(b=>b.addEventListener('click',()=>this.mostrarClientes(b.dataset.clientes)));
     document.querySelector('#seccion-clientes-movil').onchange=e=>this.mostrarClientes(e.target.value);
     document.querySelector('#agregar-cliente').onclick=()=>this.formCliente();

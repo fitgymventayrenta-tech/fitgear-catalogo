@@ -153,3 +153,18 @@ Comprobación en PostgreSQL temporal: 39 fichas publicadas, seis unidades conser
 Importación de contactos desde un documento: `supabase/migracion_importacion_clientes.sql` amplía el módulo de clientes con ubicación original, contactos sin teléfono y fuentes privadas con página/fila. El directorio muestra las coincidencias pendientes sin fusionarlas. Los datos y el SQL específico del documento se guardan exclusivamente en `datos_privados/`, excluido de Git; sus instrucciones están en `datos_privados/LEEME.md`. El SQL privado ya incluye esta ampliación: no hace falta ejecutar ambos. No modifica máquinas, solicitudes, ventas ni fichas previas. La recepción pública sigue exigiendo teléfono; para crear una solicitud interna de un contacto importado sin número hay que completar primero su teléfono real.
 
 Adaptación responsive: el administrador usa navegación de clientes con selector en pantallas de hasta 800 px, filtros plegables y fichas con datos etiquetados. Los formularios de clientes se agrupan por contacto, ubicación e información comercial; el historial de la ficha se abre por secciones. En teléfonos, los diálogos ocupan la pantalla disponible y conservan el cierre visible. El catálogo público ajusta filtros, galería, cotización y botones al ancho. Validación del flujo con transporte Supabase simulado en 320, 360, 390, 430, 768, 1024 y 1440 px, más 844×390 en horizontal; sin desbordamientos de página ni de diálogos en los estados comprobados. Estos cambios de presentación no requieren SQL.
+
+En ADMIN → Catálogo hay tres vistas: Inventario para agregar/editar, Vista previa · Todas para revisar también máquinas ocultas y Publicadas para ver únicamente las visibles. La vista previa recibe los datos ya autorizados del administrador mediante mensajes del mismo origen; su página independiente no consulta Supabase ni incluye datos de máquinas. Reutiliza las tarjetas y la galería públicas en modo de consulta, sin enviar solicitudes ni cambiar la publicación. Buscar dentro de estas vistas no modifica el inventario. No requiere una migración SQL adicional.
+
+Despliegue separado en Vercel desde el mismo GitHub
+
+Crea dos proyectos de Vercel conectados a este repositorio y a la rama `main`. En ambos selecciona Framework Preset `Other` y Root Directory en la raíz del repositorio (no `admin`). Configura:
+
+| Proyecto | Build Command | Output Directory |
+| --- | --- | --- |
+| Catálogo público | `node scripts/build-static.mjs catalogo` | `dist/catalogo` |
+| Administrador | `node scripts/build-static.mjs admin` | `dist/admin` |
+
+El administrador abre el login desde `/` en su propio dominio. Conserva internamente `/admin/` y las rutas compartidas de estilos y módulos. El catálogo generado no incluye la carpeta `admin`. Ambas aplicaciones usan el Supabase configurado en `js/config/supabase.js`; tener otro dominio no crea otra base de datos. El acceso a datos privados sigue dependiendo del login y las políticas ADMIN de Supabase.
+
+La salida se genera con una lista explícita de archivos: nunca copia `datos_privados/`, scripts SQL, pruebas ni archivos `.env`. `dist/` no se sube a Git. `.vercelignore` excluye también los archivos privados en despliegues mediante CLI. Al cambiar la configuración del proyecto público existente, haz un nuevo despliegue para que utilice `dist/catalogo`.

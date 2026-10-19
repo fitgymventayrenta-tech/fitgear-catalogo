@@ -1,5 +1,5 @@
-import { moneda, precioProducto, telefonoNormalizado } from '../utils/comercial.js?v=14';
-import { contactoConfig } from '../config/contacto.js?v=14';
+import { moneda, precioProducto, telefonoNormalizado } from '../utils/comercial.js?v=16';
+import { contactoConfig } from '../config/contacto.js?v=16';
 export class CatalogoController {
   constructor(modelo,vista){
     this.modelo=modelo;this.vista=vista;this.seleccion=new Map();this.enviando=false;
@@ -15,7 +15,6 @@ export class CatalogoController {
     this.vista.onSolicitud=producto=>this.abrirFormulario(producto);
     document.querySelector('#abrir-solicitud').onclick=()=>this.abrirFormulario();
     document.querySelector('#solicitud-personalizada').onclick=()=>this.abrirFormulario(null,true);
-    document.querySelector('#consulta-asesoria').onclick=()=>this.abrirFormulario(null,true);
     document.querySelector('#seguir-explorando').onclick=()=>this.dialogo.close();
     this.vista.onReintentar=()=>this.cargarCatalogo();
     this.configurarContacto();

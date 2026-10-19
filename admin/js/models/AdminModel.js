@@ -1,5 +1,5 @@
 
-import { supabaseConfig } from "../../../js/config/supabase.js?v=14";
+import { supabaseConfig } from "../../../js/config/supabase.js?v=15";
 
 export class AdminModel {
   constructor() {

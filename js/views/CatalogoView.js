@@ -1,8 +1,9 @@
-import { moneda, precioProducto, disponibilidadProducto } from '../utils/comercial.js?v=14';
-import { contactoConfig } from '../config/contacto.js?v=14';
+import { moneda, precioProducto, disponibilidadProducto } from '../utils/comercial.js?v=16';
+import { contactoConfig } from '../config/contacto.js?v=16';
 
 export class CatalogoView {
-  constructor(){
+  constructor({soloLectura=false}={}){
+    this.soloLectura=soloLectura;
     this.lista=document.querySelector('#lista-productos');this.contador=document.querySelector('#contador-productos');
     this.mensaje=document.querySelector('#mensaje-vacio');this.busqueda=document.querySelector('#buscar-producto');
     this.marca=document.querySelector('#filtro-marca');this.categoria=document.querySelector('#filtro-categoria');
@@ -66,6 +67,7 @@ export class CatalogoView {
     const acciones=this.crear('div','producto-acciones');const seleccionado=this.seleccion.has(p.id);
     acciones.append(this.boton('Solicitar información','boton boton-principal',()=>this.onSolicitud(p)));
     const agregar=this.boton(seleccionado?'✓ En mi cotización':'Agregar a cotización','boton boton-contorno',()=>{this.onSeleccion(p.id);});agregar.setAttribute('aria-pressed',String(seleccionado));acciones.append(agregar);contenido.append(acciones);
+    if(this.soloLectura)acciones.replaceChildren(this.boton('Ver fotos y detalles','boton boton-contorno',abrir));
     tarjeta.append(imagen,contenido);return tarjeta;
   }
   mostrarDetalle(p,origen){
@@ -88,13 +90,14 @@ export class CatalogoView {
     if(p.preventa)info.append(this.crear('p','nota-preventa',contactoConfig.condicionesPreventa||'Consulta con FitGear el plazo de entrega, el anticipo y las condiciones de reserva antes de confirmar.'));
     const acciones=this.crear('div','detalle-acciones');acciones.append(this.boton('Solicitar información','boton boton-principal',()=>{cerrar();this.onSolicitud(p);}));
     const agregar=this.boton(this.seleccion.has(p.id)?'✓ En mi cotización':'Agregar a cotización','boton boton-contorno',()=>{this.onSeleccion(p.id);agregar.textContent=this.seleccion.has(p.id)?'✓ En mi cotización':'Agregar a cotización';agregar.setAttribute('aria-pressed',String(this.seleccion.has(p.id)));});agregar.setAttribute('aria-pressed',String(this.seleccion.has(p.id)));acciones.append(agregar);info.append(acciones);
+    if(this.soloLectura)acciones.remove();
     if(p.descripcion){info.append(this.crear('h3','','Sobre este equipo'),this.crear('p','detalle-descripcion',p.descripcion));}
     const especificaciones=this.crear('dl','detalle-fichas');
     for(const [etiqueta,valor] of [['Área de entrenamiento',p.area],['Categoría',p.categoria],['Características',p.caracteristicas],['Grupo muscular',p.grupo_muscular||p.musculos],['Características técnicas',p.caracteristicas_tecnicas],['Dimensiones',p.dimensiones],['Peso',p.peso_kg==null?null:`${p.peso_kg} kg`],['Colores',p.color],['Materiales',p.materiales],['Capacidad de carga',p.capacidad_carga]]){
       if(valor===null||valor===undefined||valor==='')continue;const grupo=this.crear('div');grupo.append(this.crear('dt','',etiqueta),this.crear('dd','',valor));especificaciones.append(grupo);
     }
     if(especificaciones.children.length)info.append(this.crear('h3','','Especificaciones'),especificaciones);
-    info.append(this.crear('p','ayuda','Tu solicitud no reserva unidades. FitGear confirmará disponibilidad, precio y condiciones.'));
+    if(!this.soloLectura)info.append(this.crear('p','ayuda','Tu solicitud no reserva unidades. FitGear confirmará disponibilidad, precio y condiciones.'));
     grid.append(galeria,info);d.append(cabecera,grid);d.onclose=()=>{d.remove();if(origen?.isConnected)origen.focus();};document.body.append(d);d.showModal();
   }
 }
