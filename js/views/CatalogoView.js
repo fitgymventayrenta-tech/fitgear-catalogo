@@ -1,219 +1,100 @@
+import { moneda, precioProducto, disponibilidadProducto } from '../utils/comercial.js?v=14';
+import { contactoConfig } from '../config/contacto.js?v=14';
 
 export class CatalogoView {
-  constructor() {
-    this.lista = document.querySelector("#lista-productos");
-    this.contador = document.querySelector("#contador-productos");
-    this.mensaje = document.querySelector("#mensaje-vacio");
-    this.busqueda = document.querySelector("#buscar-producto");
-    this.marca = document.querySelector("#filtro-marca");
-    this.categoria = document.querySelector("#filtro-categoria");
-    this.seleccion=new Set();
-    this.onSeleccion=()=>{};
+  constructor(){
+    this.lista=document.querySelector('#lista-productos');this.contador=document.querySelector('#contador-productos');
+    this.mensaje=document.querySelector('#mensaje-vacio');this.busqueda=document.querySelector('#buscar-producto');
+    this.marca=document.querySelector('#filtro-marca');this.categoria=document.querySelector('#filtro-categoria');
+    this.seleccion=new Map();this.onSeleccion=()=>{};
   }
-
-  configurarFiltros(marcas, categorias) {
-    this.llenarSelect(this.marca, marcas, "Todas las marcas");
-    this.llenarSelect(
-      this.categoria,
-      categorias,
-      "Todas las categorías"
-    );
-  }
-
-  llenarSelect(elemento, valores, etiqueta) {
-    if (!elemento) return;
-
-    elemento.replaceChildren();
-
-    const inicial = document.createElement("option");
-    inicial.value = "";
-    inicial.textContent = etiqueta;
-    elemento.append(inicial);
-
-    valores.forEach(valor => {
-      const opcion = document.createElement("option");
-      opcion.value = valor;
-      opcion.textContent = valor;
-      elemento.append(opcion);
-    });
-  }
-
-  obtenerFiltros() {
-    return {
-      busqueda: this.busqueda?.value || "",
-      marca: this.marca?.value || "",
-      categoria: this.categoria?.value || ""
+  crear(tag,clase='',texto){const e=document.createElement(tag);if(clase)e.className=clase;if(texto!==undefined)e.textContent=texto;return e;}
+  boton(texto,clase,accion){const b=this.crear('button',clase,texto);b.type='button';b.onclick=accion;return b;}
+  configurarFiltros(marcas,categorias){this.llenarSelect(this.marca,marcas,'Todas las marcas');this.llenarSelect(this.categoria,categorias,'Todas las categorías');}
+  llenarSelect(elemento,valores,etiqueta){const previo=elemento.value;elemento.replaceChildren();for(const [valor,texto] of [['',etiqueta],...valores.map(v=>[v,v])]){const o=this.crear('option','',texto);o.value=valor;elemento.append(o);}if(valores.includes(previo))elemento.value=previo;}
+  obtenerFiltros(){return {busqueda:this.busqueda.value,marca:this.marca.value,categoria:this.categoria.value,
+    disponibilidad:document.querySelector('#filtro-disponibilidad').value,comercial:document.querySelector('#filtro-comercial').value,
+    precioMinimo:document.querySelector('#precio-minimo').value,precioMaximo:document.querySelector('#precio-maximo').value,orden:document.querySelector('#orden-productos').value};}
+  escucharFiltros(callback){
+    this.busqueda.oninput=callback;
+    for(const id of ['filtro-marca','filtro-categoria','filtro-disponibilidad','filtro-comercial','orden-productos'])document.querySelector('#'+id).onchange=callback;
+    for(const id of ['precio-minimo','precio-maximo'])document.querySelector('#'+id).oninput=callback;
+    document.querySelector('#abrir-filtros').onclick=()=>{
+      const panel=document.querySelector('#filtros-avanzados'),boton=document.querySelector('#abrir-filtros');panel.hidden=!panel.hidden;boton.setAttribute('aria-expanded',String(!panel.hidden));
     };
+    for(const id of ['limpiar-filtros','restablecer-busqueda'])document.querySelector('#'+id).onclick=()=>{
+      for(const campo of document.querySelectorAll('#filtros-avanzados input,#filtros-avanzados select'))campo.value='';
+      this.busqueda.value='';document.querySelector('#orden-productos').value='disponibilidad';callback();this.busqueda.focus();
+    };
+    document.querySelector('#precio-minimo').addEventListener('invalid',()=>{document.querySelector('#filtros-avanzados').hidden=false;});
   }
-
-  escucharFiltros(callback) {
-    this.busqueda?.addEventListener("input", callback);
-    this.marca?.addEventListener("change", callback);
-    this.categoria?.addEventListener("change", callback);
+  actualizarIndicadoresFiltros(){
+    const filtros=this.obtenerFiltros(),activos=Object.entries(filtros).filter(([k,v])=>k!=='orden'&&k!=='busqueda'&&v!=='').length;
+    document.querySelector('#abrir-filtros').textContent=activos?`Filtros (${activos})`:'Filtros';
+    document.querySelector('#limpiar-filtros').hidden=!activos&&!filtros.busqueda;
+    const min=document.querySelector('#precio-minimo'),max=document.querySelector('#precio-maximo');
+    const invalido=!min.validity.valid||!max.validity.valid||(min.value!==''&&max.value!==''&&Number(min.value)>Number(max.value));
+    const aviso=document.querySelector('#aviso-catalogo');aviso.hidden=!invalido;
+    if(invalido)aviso.textContent='Revisa el rango: usa precios desde Q 0 y un máximo mayor o igual al mínimo.';
   }
-
-  mostrarCargando() {
-    this.lista.replaceChildren();
-
-    const texto = document.createElement("p");
-    texto.className = "estado-catalogo";
-    texto.textContent = "Cargando máquinas desde Supabase...";
-
-    this.lista.append(texto);
-    if (this.contador) this.contador.textContent = "";
-    if (this.mensaje) this.mensaje.hidden = true;
+  mostrarCargando(){this.lista.replaceChildren(this.crear('p','estado-catalogo','Cargando equipos…'));this.contador.textContent='';this.mensaje.hidden=true;}
+  mostrarError(){
+    const caja=this.crear('div','estado-catalogo');caja.append(this.crear('h3','','No pudimos cargar los equipos'),this.crear('p','','Intenta de nuevo para consultar disponibilidad y precios.'),this.boton('Volver a intentar','boton boton-principal',()=>this.onReintentar?.()));
+    this.lista.replaceChildren(caja);this.contador.textContent='';this.mensaje.hidden=true;
   }
-
-  mostrarError(error) {
-    this.lista.replaceChildren();
-
-    const aviso = document.createElement("p");
-    aviso.className = "estado-catalogo error-catalogo";
-    aviso.textContent =
-      "No fue posible cargar el catálogo. " + error.message;
-
-    this.lista.append(aviso);
-    if (this.contador) this.contador.textContent = "";
-    if (this.mensaje) this.mensaje.hidden = true;
+  mostrarProductos(productos){
+    this.lista.replaceChildren();this.contador.textContent=`${productos.length} ${productos.length===1?'equipo encontrado':'equipos encontrados'}`;this.mensaje.hidden=productos.length>0;
+    productos.forEach(p=>this.lista.append(this.crearTarjeta(p)));this.actualizarIndicadoresFiltros();
   }
-
-  mostrarProductos(productos) {
-    this.lista.replaceChildren();
-
-    if (this.contador) {
-      this.contador.textContent =
-        `${productos.length} máquina(s) encontrada(s)`;
-    }
-
-    if (this.mensaje) {
-      this.mensaje.hidden = productos.length > 0;
-    }
-
-    productos.forEach(producto => {
-      this.lista.append(this.crearTarjeta(producto));
-    });
+  imagen(src,alt,clase=''){
+    const caja=this.crear('div',clase);
+    if(src){const img=this.crear('img');img.src=src;img.alt=alt;img.loading='lazy';img.decoding='async';img.onerror=()=>caja.replaceChildren(this.crear('span','imagen-vacia','Fotografía no disponible'));caja.append(img);}
+    else caja.append(this.crear('span','imagen-vacia','Consulta fotografías del equipo'));
+    return caja;
   }
-
-  crearTarjeta(producto) {
-    const tarjeta = document.createElement("article");
-    tarjeta.className = "tarjeta-producto";
-
-    const imagenContenedor = document.createElement("div");
-    imagenContenedor.className = "producto-imagen";
-
-    if (producto.imagen || producto.imagenes.length) {
-      const imagen = document.createElement("img");
-      imagen.src = producto.imagen || producto.imagenes[0];
-      imagen.alt = producto.nombre;
-      imagen.loading = "lazy";
-      imagen.onerror = () => {
-        imagenContenedor.textContent = "Imagen no disponible";
-      };
-      imagenContenedor.append(imagen);
-    } else {
-      imagenContenedor.textContent = "Fotografía próximamente";
-    }
-
-    const contenido = document.createElement("div");
-    contenido.className = "producto-contenido";
-
-    const marca = document.createElement("span");
-    marca.className = "producto-marca";
-    marca.textContent = producto.marca;
-
-    const nombre = document.createElement("h3");
-    nombre.textContent = producto.nombre;
-
-    const categoria = document.createElement("p");
-    categoria.className = "producto-categoria";
-    categoria.textContent = producto.categoria;
-
-    const descripcion = document.createElement("p");
-    descripcion.className = "producto-descripcion";
-    descripcion.textContent =
-      producto.descripcion || "Consulta las características.";
-
-    const precio = document.createElement("p");
-    precio.className = "producto-precio";
-
-    if (producto.precio !== null &&
-        producto.precio !== undefined) {
-      const numero = Number(producto.precio);
-      precio.textContent =
-        `Q ${numero.toLocaleString("es-GT", {
-          minimumFractionDigits: 2,
-          maximumFractionDigits: 2
-        })}`;
-    } else {
-      precio.textContent = "Precio a consultar";
-    }
-
-    const disponibilidad = document.createElement("p");
-    disponibilidad.className = "producto-disponibilidad";
-    disponibilidad.textContent =
-      producto.existencias > 0
-        ? `Existencias: ${producto.existencias}`
-        : "Disponibilidad a consultar";
-
-    const enlace = document.createElement("button");
-    enlace.className = "boton-cotizar";
-    enlace.textContent = "Solicitar información";
-
-    enlace.type='button';
-    enlace.addEventListener('click',()=>this.onSeleccion(producto.id));
-    const estado=document.createElement('p');estado.className='producto-estado';
-    const disponible=producto.existencias>0&&producto.estado==='disponible';
-    estado.textContent=disponible?'Disponible':producto.existencias>0&&producto.estado==='reservada'?'Reservada':'Vendida / sin existencias';
-    if(!disponible)estado.classList.add('no-disponible');
-    const oferta=document.createElement('span');oferta.className='insignia-oferta';oferta.textContent='EN OFERTA';oferta.hidden=!producto.oferta;
-    enlace.textContent=this.seleccion.has(producto.id)?'✓ Seleccionada':'Me interesa';
-    enlace.setAttribute('aria-pressed',String(this.seleccion.has(producto.id)));
-    disponibilidad.textContent=`Existencias: ${producto.existencias}`;
-    const detalles=document.createElement('button');detalles.type='button';detalles.className='boton-detalles';detalles.textContent='Ver detalles y fotos';detalles.addEventListener('click',()=>this.mostrarDetalle(producto,detalles));
-    contenido.append(
-      marca,
-      nombre,
-      oferta,
-      categoria,
-      descripcion,
-      precio,
-      disponibilidad,
-      estado,
-      detalles,
-      enlace
-    );
-
-    tarjeta.append(imagenContenedor, contenido);
-    return tarjeta;
+  crearTarjeta(p){
+    const tarjeta=this.crear('article','tarjeta-producto');const abrir=()=>this.mostrarDetalle(p,tarjeta.querySelector('.producto-nombre'));
+    const imagen=this.boton('','producto-imagen',abrir);imagen.setAttribute('aria-label',`Ver detalles y fotos de ${p.nombre}`);imagen.append(this.imagen(p.imagen||p.imagenes?.[0],p.nombre,'imagen-interior'),this.crear('span','foto-indicacion','Ver fotos y detalles'));
+    const contenido=this.crear('div','producto-contenido');const encabezado=this.crear('div','producto-identidad');
+    encabezado.append(this.crear('span','producto-marca',p.marca));const h3=this.crear('h3');h3.append(this.boton(p.nombre,'producto-nombre',abrir));encabezado.append(h3);
+    const categoria=[p.area||p.categoria,p.modelo].filter(Boolean).join(' · ');if(categoria)encabezado.append(this.crear('p','producto-categoria',categoria));
+    contenido.append(encabezado);
+    const etiquetas=this.crear('div','producto-etiquetas');const estado=disponibilidadProducto(p);
+    etiquetas.append(this.crear('span','estado-equipo estado-'+estado.clave,estado.texto));if(p.oferta)etiquetas.append(this.crear('span','insignia-oferta','En oferta'));contenido.append(etiquetas);
+    if(p.descripcion)contenido.append(this.crear('p','producto-descripcion',p.descripcion));
+    const precio=precioProducto(p);contenido.append(this.crear('p','producto-precio',precio===null?'Precio a consultar':moneda(precio)),this.crear('p','producto-disponibilidad',estado.detalle));
+    const acciones=this.crear('div','producto-acciones');const seleccionado=this.seleccion.has(p.id);
+    acciones.append(this.boton('Solicitar información','boton boton-principal',()=>this.onSolicitud(p)));
+    const agregar=this.boton(seleccionado?'✓ En mi cotización':'Agregar a cotización','boton boton-contorno',()=>{this.onSeleccion(p.id);});agregar.setAttribute('aria-pressed',String(seleccionado));acciones.append(agregar);contenido.append(acciones);
+    tarjeta.append(imagen,contenido);return tarjeta;
   }
-  mostrarDetalle(producto,origen) {
-    const dialogo=document.createElement('dialog');dialogo.className='detalle-dialogo';dialogo.setAttribute('aria-label',`Detalles de ${producto.nombre}`);
-    const crear=(tag,clase,texto)=>{const e=document.createElement(tag);if(clase)e.className=clase;if(texto!==undefined)e.textContent=texto;return e;};
-    const boton=(texto,accion)=>{const b=crear('button','boton boton-neutral',texto);b.type='button';b.onclick=accion;return b;};
-    const cerrar=()=>dialogo.close();
-    const nav=crear('nav','detalle-navegacion');
-    nav.append(boton('Volver al catálogo',cerrar));
-    const grid=crear('div','detalle-grid');const galeria=crear('section','detalle-galeria');
-    const fotos=[...new Set([producto.imagen,...producto.imagenes].filter(u=>typeof u==='string'&&u))];
-    const principal=crear('img','detalle-foto');principal.alt=producto.nombre;
-    const marco=crear('div','detalle-marco');const miniaturas=crear('div','detalle-miniaturas');let actual=0;
-    const seleccionar=i=>{actual=i;principal.src=fotos[i];principal.alt=`${producto.nombre}, foto ${i+1}`;[...miniaturas.children].forEach((b,n)=>b.setAttribute('aria-pressed',String(n===i)));};
-    if(fotos.length){marco.append(principal);fotos.forEach((url,i)=>{const b=boton(`Foto ${i+1}`,()=>seleccionar(i));const img=crear('img');img.src=url;img.alt='';img.loading='lazy';b.prepend(img);miniaturas.append(b);});seleccionar(0);}else marco.textContent='Fotografía próximamente';
+  mostrarDetalle(p,origen){
+    const d=this.crear('dialog','detalle-dialogo');d.setAttribute('aria-label',`Detalles de ${p.nombre}`);
+    const cerrar=()=>d.close();const cabecera=this.crear('div','detalle-cabecera');cabecera.append(this.crear('span','producto-marca',p.marca),this.boton('Cerrar','boton boton-neutral',cerrar));
+    const grid=this.crear('div','detalle-grid'),galeria=this.crear('section','detalle-galeria'),info=this.crear('section','detalle-info');
+    const fotos=[...new Set([p.imagen,...(p.imagenes||[])].filter(Boolean))];let actual=0;
+    const marco=this.imagen(fotos[0],p.nombre,'detalle-marco');const miniaturas=this.crear('div','detalle-miniaturas');miniaturas.setAttribute('aria-label','Fotografías del equipo');
+    const seleccionar=i=>{actual=i;const img=marco.querySelector('img');if(img){img.src=fotos[i];img.alt=`${p.nombre}, foto ${i+1}`;}else marco.replaceChildren(...this.imagen(fotos[i],p.nombre).childNodes);[...miniaturas.children].forEach((b,n)=>b.setAttribute('aria-pressed',String(n===i)));};
     galeria.append(marco);
-    if(fotos.length>1)galeria.append(miniaturas);
-    if(fotos.length)galeria.append(boton('Ampliar fotografía',()=>{
-      const ampliada=document.createElement('dialog');ampliada.className='foto-ampliada';ampliada.setAttribute('aria-label','Fotografía ampliada');
-      const img=crear('img');img.src=fotos[actual];img.alt=principal.alt;ampliada.append(boton('Cerrar fotografía',()=>ampliada.close()),img);
-      ampliada.addEventListener('close',()=>ampliada.remove());document.body.append(ampliada);ampliada.showModal();
+    if(fotos.length>1){fotos.forEach((foto,i)=>{const b=this.boton(`Foto ${i+1}`,'miniatura',()=>seleccionar(i));b.prepend(this.imagen(foto,'','miniatura-imagen'));b.setAttribute('aria-pressed',String(i===0));miniaturas.append(b);});galeria.append(miniaturas);}
+    if(fotos.length)galeria.append(this.boton('Ampliar fotografía','enlace-texto',()=>{
+      const a=this.crear('dialog','foto-ampliada');a.setAttribute('aria-label',`Fotografía ampliada de ${p.nombre}`);const cerrarFoto=this.boton('Cerrar fotografía','boton boton-neutral',()=>a.close());
+      a.append(cerrarFoto,this.imagen(fotos[actual],p.nombre,'imagen-ampliada'));a.onclose=()=>a.remove();document.body.append(a);a.showModal();
     }));
-    const info=crear('section','detalle-info');info.append(crear('span','producto-marca',producto.marca),crear('h2','',producto.nombre));if(producto.oferta)info.append(crear('span','insignia-oferta','EN OFERTA'));
-    const fichas=crear('div','detalle-fichas');
-    for(const [etiqueta,valor] of [['Descripción del equipo',producto.descripcion],['Características principales',producto.caracteristicas],['Grupo muscular trabajado',producto.grupo_muscular],['Características técnicas',producto.caracteristicas_tecnicas],['Dimensiones',producto.dimensiones],['Peso del equipo',producto.peso_kg==null?null:`${producto.peso_kg} kg`],['Colores disponibles',producto.color],['Materiales',producto.materiales],['Capacidad de carga',producto.capacidad_carga]]){if(valor===null||valor===undefined||valor==='')continue;const ficha=crear('article');ficha.append(crear('h3','',etiqueta),crear('p','',valor||'Pendiente de completar'));fichas.append(ficha);}
-    const inventario=crear('div','detalle-inventario');
-    for(const [etiqueta,valor] of [['Precio',producto.precio==null?'Precio a consultar':`Q ${Number(producto.precio).toLocaleString('es-GT',{minimumFractionDigits:2})}`],['Existencias',`${producto.existencias} · ${producto.existencias<=0?'Vendida / sin existencias':producto.estado==='reservada'?'Reservada':producto.estado==='disponible'?'Disponible':'Vendida'}`]]){const bloque=crear('div');bloque.append(crear('strong','',etiqueta),crear('p','',valor));inventario.append(bloque);}
-    const interes=boton(this.seleccion.has(producto.id)?'✓ Seleccionada':'Me interesa',()=>{this.onSeleccion(producto.id);interes.textContent=this.seleccion.has(producto.id)?'✓ Seleccionada':'Me interesa';});
-    info.append(fichas,inventario,interes);grid.append(galeria,info);dialogo.append(nav,grid);
-    dialogo.addEventListener('close',()=>{dialogo.remove();origen.focus();});document.body.append(dialogo);dialogo.showModal();
+    const estado=disponibilidadProducto(p),precio=precioProducto(p);
+    info.append(this.crear('h2','',p.nombre));if(p.modelo)info.append(this.crear('p','producto-categoria',`Modelo: ${p.modelo}`));
+    const etiquetas=this.crear('div','producto-etiquetas');etiquetas.append(this.crear('span','estado-equipo estado-'+estado.clave,estado.texto));if(p.oferta)etiquetas.append(this.crear('span','insignia-oferta','En oferta'));info.append(etiquetas);
+    info.append(this.crear('p','detalle-precio',precio===null?'Precio a consultar':moneda(precio)),this.crear('p','',estado.detalle));
+    if(p.preventa)info.append(this.crear('p','nota-preventa',contactoConfig.condicionesPreventa||'Consulta con FitGear el plazo de entrega, el anticipo y las condiciones de reserva antes de confirmar.'));
+    const acciones=this.crear('div','detalle-acciones');acciones.append(this.boton('Solicitar información','boton boton-principal',()=>{cerrar();this.onSolicitud(p);}));
+    const agregar=this.boton(this.seleccion.has(p.id)?'✓ En mi cotización':'Agregar a cotización','boton boton-contorno',()=>{this.onSeleccion(p.id);agregar.textContent=this.seleccion.has(p.id)?'✓ En mi cotización':'Agregar a cotización';agregar.setAttribute('aria-pressed',String(this.seleccion.has(p.id)));});agregar.setAttribute('aria-pressed',String(this.seleccion.has(p.id)));acciones.append(agregar);info.append(acciones);
+    if(p.descripcion){info.append(this.crear('h3','','Sobre este equipo'),this.crear('p','detalle-descripcion',p.descripcion));}
+    const especificaciones=this.crear('dl','detalle-fichas');
+    for(const [etiqueta,valor] of [['Área de entrenamiento',p.area],['Categoría',p.categoria],['Características',p.caracteristicas],['Grupo muscular',p.grupo_muscular||p.musculos],['Características técnicas',p.caracteristicas_tecnicas],['Dimensiones',p.dimensiones],['Peso',p.peso_kg==null?null:`${p.peso_kg} kg`],['Colores',p.color],['Materiales',p.materiales],['Capacidad de carga',p.capacidad_carga]]){
+      if(valor===null||valor===undefined||valor==='')continue;const grupo=this.crear('div');grupo.append(this.crear('dt','',etiqueta),this.crear('dd','',valor));especificaciones.append(grupo);
+    }
+    if(especificaciones.children.length)info.append(this.crear('h3','','Especificaciones'),especificaciones);
+    info.append(this.crear('p','ayuda','Tu solicitud no reserva unidades. FitGear confirmará disponibilidad, precio y condiciones.'));
+    grid.append(galeria,info);d.append(cabecera,grid);d.onclose=()=>{d.remove();if(origen?.isConnected)origen.focus();};document.body.append(d);d.showModal();
   }
-
 }

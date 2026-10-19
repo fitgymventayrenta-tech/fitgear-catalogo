@@ -1,0 +1,5 @@
+# Información privada de clientes e importaciones locales
+/datos_privados/
+.env
+.env.*
+.DS_Store

@@ -8,6 +8,8 @@ export class AdminController {
 
   iniciar() {
     this.vista.mostrarPanel(false);
+    this.vista.configurarComercial();
+    this.vista.onComercial=(accion,datos)=>this.accionComercial(accion,datos);
     document.querySelectorAll('[data-seccion]').forEach(b => {
       b.addEventListener('click', () => this.vista.mostrarSeccion(b.dataset.seccion));
     });
@@ -32,6 +34,7 @@ export class AdminController {
         this.vista.notificar(error.message, true);
       }
     });
+    this.vista.formProducto.elements.existencias.addEventListener('input',()=>this.vista.sincronizarInventario());
     this.vista.formProducto.addEventListener('submit', e => this.guardarProducto(e));
     document.querySelector('#nuevo-producto').addEventListener('click', () => {
       if (this.guardando) return;
@@ -42,6 +45,7 @@ export class AdminController {
       e.preventDefault();
       if (!this.guardando) this.vista.volverInventario();
     });
+    document.querySelector('#cerrar-editor').addEventListener('click',()=>{if(!this.guardando)this.vista.volverInventario();});
     document.querySelector('#cancelar-edicion').addEventListener('click', () => {
       if (!this.guardando) this.vista.volverInventario();
     });
@@ -54,6 +58,9 @@ export class AdminController {
     this.vista.salir.addEventListener('click', () => {
       if (this.guardando) return;
       this.modelo.cerrarSesion();
+      this.vista.comercial=null;
+      document.querySelectorAll('[data-comercial-dialogo]').forEach(d=>d.remove());
+      for(const id of ['lista-clientes','lista-oportunidades','lista-seguimientos','lista-cotizaciones','lista-ventas'])document.querySelector('#'+id).replaceChildren();
       this.productos = [];
       this.vista.lista.replaceChildren();
       document.querySelector('#lista-solicitudes').replaceChildren();
@@ -89,9 +96,11 @@ export class AdminController {
     let guardado = false;
     let intentoGuardar = false;
     try {
+      datos.publicado = e.submitter?.value !== 'borrador';
       this.modelo.validarProducto(datos);
-      datos.publicado = true;
       datos.moneda = 'GTQ';
+      const anterior=this.productos.find(p=>String(p.id)===String(datos.id));
+      if(anterior?.preventa)datos.precio_especial=datos.precio;
       this.guardando = true;
       // Impide alterar fotos o cambiar de máquina durante una subida.
       const controles = [...this.vista.panel.querySelectorAll('button,input,select,textarea')];
@@ -108,18 +117,24 @@ export class AdminController {
       datos.imagen_url = urls[0] || null;
       datos.imagenes = urls;
       intentoGuardar = true;
-      await this.modelo.guardarProducto(datos);
+      const registros=await this.modelo.guardarProducto(datos);
       guardado = true;
+      const idGuardado=registros?.[0]?.id||datos.id;
+      let problemaPublicacion=null;
+      if(datos.publicado&&idGuardado&&this.modelo.comprobarPublicacion){try{await this.modelo.comprobarPublicacion(idGuardado);}catch(error){problemaPublicacion=error.message;}}
+      this.notificarCambioCatalogo();
       this.vista.limpiarFormulario();
       try {
         await this.cargarProductos();
-        this.vista.notificar('Máquina guardada correctamente.');
+        if(problemaPublicacion)this.vista.notificar('Los cambios se guardaron en ADMIN, pero no se pudo confirmar su lectura pública: '+problemaPublicacion,true);
+        else this.vista.notificar(datos.publicado?'Máquina guardada y publicada. Los cambios ya están disponibles en el catálogo.':'Máquina guardada sin publicar. Solo está visible en ADMIN.');
       } catch (error) {
         this.vista.notificar('La máquina se guardó, pero no se pudo actualizar la lista: ' + error.message, true);
       }
     } catch (error) {
       // Una pérdida de red puede ocurrir DESPUÉS del commit remoto. En ese caso
       // conservar las fotos evita romper una ficha que sí llegó a guardarse.
+      if(error.datosGuardados)guardado=true;
       if (!guardado && (!intentoGuardar || error.respuestaHttp)) {
         await Promise.allSettled(subidas.map(url => this.modelo.eliminarImagen(url)));
       }
@@ -131,6 +146,11 @@ export class AdminController {
     }
   }
 
+  notificarCambioCatalogo(){
+    if(typeof window==='undefined')return;
+    try{localStorage.setItem('fitgear.catalogo.actualizado',String(Date.now()));}catch{}
+  }
+
   async cargarProductos() {
     this.productos = await this.modelo.obtenerProductos();
     this.vista.mostrarProductos(this.productos, p => this.vista.editar(p), p => this.eliminarProducto(p));
@@ -140,6 +160,7 @@ export class AdminController {
     if (this.guardando || !confirm(`¿Eliminar definitivamente "${producto.nombre}"?`)) return;
     try {
       await this.modelo.eliminarProducto(producto.id);
+      this.notificarCambioCatalogo();
       if (String(this.vista.formProducto.elements.id.value) === String(producto.id)) this.vista.limpiarFormulario();
       await this.cargarProductos();
       this.vista.notificar('Máquina eliminada.');
@@ -148,22 +169,31 @@ export class AdminController {
 
   async cargarSolicitudes() {
     try {
-      const solicitudes = await this.modelo.obtenerSolicitudes();
-      this.vista.mostrarSolicitudes(solicitudes, async (solicitud, estado) => {
-        try {
-          await this.modelo.actualizarSolicitud(solicitud.id, estado);
-          solicitud.estado = estado;
-          this.vista.resumirSolicitudes(solicitudes);
-          this.vista.notificar('Seguimiento actualizado.');
-        } catch (error) {
-          this.vista.notificar(error.message, true);
-          throw error;
-        }
-      });
+      this.vista.mostrarComercial(await this.modelo.obtenerComercial());
     } catch (error) {
       this.vista.resumirSolicitudes(null);
-      document.querySelector('#lista-solicitudes').textContent = 'No fue posible cargar las solicitudes. Revisa la migración de Supabase y usa «Actualizar solicitudes».';
+      for(const id of ['lista-clientes','lista-solicitudes','lista-oportunidades','lista-seguimientos','lista-cotizaciones','lista-ventas'])document.querySelector('#'+id).textContent='No fue posible cargar el módulo comercial. Aplica migracion_modulo_clientes.sql en Supabase y pulsa «Actualizar datos».';
       throw error;
     }
+  }
+
+  async accionComercial(accion,datos) {
+    switch(accion){
+      case 'cliente': await this.modelo.guardarCliente(datos);break;
+      case 'solicitud': await this.modelo.actualizarSolicitud(datos.id,datos.campos);break;
+      case 'solicitud-interna': await this.modelo.accionComercial('registrar_solicitud_interna',{p_cliente:datos.cliente_id,p_datos:datos.solicitud});break;
+      case 'seguimiento': await this.modelo.accionComercial('guardar_seguimiento',{p_datos:datos});break;
+      case 'completar': await this.modelo.accionComercial('completar_seguimiento',{p_id:datos.id});break;
+      case 'cotizacion': await this.modelo.accionComercial('guardar_cotizacion',{p_datos:datos});break;
+      case 'estado-cotizacion': await this.modelo.accionComercial('cambiar_cotizacion',{p_id:datos.id,p_estado:datos.estado});break;
+      case 'pedido': await this.modelo.accionComercial('confirmar_venta',{p_cotizacion:datos.cotizacion,p_anticipo:datos.anticipo});break;
+      case 'pago': await this.modelo.accionComercial('registrar_pago',{p_venta:datos.venta,p_monto:datos.monto,p_medio:datos.medio,p_referencia:datos.referencia});break;
+      case 'entrega': await this.modelo.actualizarEntrega(datos.id,datos.estado);break;
+      default:throw new Error('Acción comercial desconocida.');
+    }
+    if(accion==='pedido')this.notificarCambioCatalogo();
+    const resultados=await Promise.allSettled([this.cargarSolicitudes(),...(accion==='pedido'?[this.cargarProductos()]:[])]);
+    const errores=resultados.filter(r=>r.status==='rejected');
+    this.vista.notificar(errores.length?'La operación se guardó. No se pudo actualizar la vista; pulsa «Actualizar datos».':'Información guardada correctamente.',errores.length>0);
   }
 }

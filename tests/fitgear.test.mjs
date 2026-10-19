@@ -5,6 +5,8 @@ import { readFile } from 'node:fs/promises';
 async function importar(ruta) {
   let codigo = await readFile(new URL('../' + ruta, import.meta.url), 'utf8');
   codigo = codigo.replace(/import \{ supabaseConfig \} from [^;]+;/, 'const supabaseConfig={url:"https://test.supabase.co",key:"sb_publishable_test"};');
+  const helper=Buffer.from(await readFile(new URL('../js/utils/comercial.js',import.meta.url),'utf8')).toString('base64');
+  codigo=codigo.replace(/from "[^"]*utils\/comercial\.js(?:\?[^"]*)?"/,`from "data:text/javascript;base64,${helper}"`);
   return import('data:text/javascript;base64,' + Buffer.from(codigo).toString('base64'));
 }
 const { AdminModel } = await importar('admin/js/models/AdminModel.js');
@@ -42,11 +44,11 @@ test('PATCH y DELETE vacíos nunca se reportan como guardados', async () => {
   const m=modeloAdmin();m.solicitar=async()=>[];
   await assert.rejects(()=>m.guardarProducto({...producto(),id:5}),/no existe/);
   await assert.rejects(()=>m.eliminarProducto(5),/no existe/);
-  await assert.rejects(()=>m.actualizarSolicitud(1,'contactado'),/no existe/);
+  await assert.rejects(()=>m.actualizarSolicitud(1,{estado_comercial:'contactada'}),/no existe/);
 });
 
 test('guarda galería persistente y conserva campos antiguos al editar', async () => {
-  const m=modeloAdmin();let llamada;m.solicitar=async(ruta,opciones)=>{llamada={ruta,...opciones};return [{id:5}];};
+  const m=modeloAdmin();let llamada;m.solicitar=async(ruta,opciones)=>{llamada={ruta,...opciones};return [{...JSON.parse(opciones.body),id:5}];};
   await m.guardarProducto({...producto(),id:5,moneda:'GTQ',imagen_url:'https://test.supabase.co/foto.png',imagenes:['https://test.supabase.co/foto.png']});
   assert.match(llamada.ruta,/id=eq.5/);assert.equal(llamada.method,'PATCH');
   const body=JSON.parse(llamada.body);assert.equal('categoria' in body,false);assert.equal('area' in body,false);assert.equal(body.imagenes.length,1);
@@ -62,8 +64,8 @@ test('catálogo transforma inventario agotado y conserva fotos', async () => {
 
 test('solicitudes rechazan datos y máquinas inválidas antes de llamar a Supabase', async () => {
   const m=new ProductoModel();m.productos=[{id:1},{id:2}];
-  const base={nombre:'Cliente de prueba',telefono:'5555 5555',correo:'cliente@example.com',mensaje:'',productos:[1,2]};
-  for(const cambio of [{correo:''},{telefono:'abc'},{productos:[]},{productos:[1,1]},{productos:[999]}])await assert.rejects(()=>m.enviarSolicitud({...base,...cambio}),/Revisa/);
+  const base={nombre:'Cliente de prueba',telefono:'5555 5555',correo:'cliente@example.com',mensaje:'',productos:[{producto_id:1,cantidad:2},{producto_id:2,cantidad:1}]};
+  for(const cambio of [{correo:'incorrecto'},{telefono:'abc'},{productos:[]},{productos:[{producto_id:1,cantidad:1},{producto_id:1,cantidad:2}]},{productos:[{producto_id:999,cantidad:1}]}])await assert.rejects(()=>m.enviarSolicitud({...base,...cambio}),/Revisa|Selecciona/);
 });
 
 test('una solicitud con varias máquinas usa únicamente la RPC pública', async () => {
@@ -71,8 +73,8 @@ test('una solicitud con varias máquinas usa únicamente la RPC pública', async
   try {
     globalThis.fetch=async(url,opciones)=>{llamada={url,...opciones};return new Response('123',{status:200});};
     const m=new ProductoModel();m.productos=[{id:1},{id:2}];
-    const id=await m.enviarSolicitud({nombre:'Cliente prueba',telefono:'5555 5555',correo:'cliente@example.com',mensaje:'Consulta',productos:[1,2]});
-    assert.equal(id,123);assert.match(llamada.url,/rpc\/registrar_solicitud$/);assert.deepEqual(JSON.parse(llamada.body).p_productos,[1,2]);
+    const id=await m.enviarSolicitud({nombre:'Cliente prueba',telefono:'5555 5555',correo:'cliente@example.com',mensaje:'Consulta',productos:[{producto_id:1,cantidad:2},{producto_id:2,cantidad:1}]});
+    assert.equal(id,123);assert.match(llamada.url,/rpc\/registrar_solicitud_comercial$/);assert.deepEqual(JSON.parse(llamada.body).p_datos.productos,[{producto_id:1,cantidad:2},{producto_id:2,cantidad:1}]);
   } finally {globalThis.fetch=original;}
 });
 
@@ -101,4 +103,32 @@ test('una caída de red con resultado incierto no borra fotos posiblemente confi
   const eliminadas=[];const vista={panel:{querySelectorAll:()=>[]},leerFormulario:()=>({...producto(),fotos:[{archivo:'a'}]}),notificar(){},limpiarFormulario(){throw Error('No debe limpiar');}};
   const modelo={validarProducto(){},async validarContenidoImagen(){},async subirImagen(){return 'nueva';},async guardarProducto(){throw Error('Network error');},async eliminarImagen(url){eliminadas.push(url);}};
   const c=new AdminController(modelo,vista);await c.guardarProducto({preventDefault(){}});assert.deepEqual(eliminadas,[]);
+});
+
+const {metricasComerciales,validarSolicitudComercial}=await importar('js/utils/comercial.js');
+test('dashboard distingue solicitudes de clientes únicos y tareas pendientes de vencidas',()=>{
+  const m=metricasComerciales({clientes:[{id:1},{id:2}],solicitudes:[{cliente_id:1,estado_comercial:'contactada'},{cliente_id:1,estado_comercial:'cotizada'},{cliente_id:2,estado_comercial:'nueva'}],seguimientos:[{cliente_id:1,siguiente_contacto:'2026-01-02',completado:false},{cliente_id:1,siguiente_contacto:'2025-12-30',completado:false},{cliente_id:1,completado:true}],cotizaciones:[{estado:'borrador'},{estado:'convertida'}],ventas:[{id:1}]},Date.parse('2026-01-01'));
+  assert.equal(m['total-solicitudes'],3);assert.equal(m['total-clientes'],2);assert.equal(m['solicitudes-contactadas'],1);assert.equal(m['seguimientos-pendientes'],2);assert.equal(m['seguimientos-programados'],1);assert.equal(m['seguimientos-vencidos'],1);assert.equal(m['solicitudes-finalizadas'],1);assert.equal(m['ventas-concretadas'],1);
+});
+test('consulta personalizada y de catálogo permiten correo opcional y validan cantidades',()=>{
+  const base={nombre:'Cliente local',telefono:'55551234',correo:'',operacion:'renta',mensaje:''};
+  validarSolicitudComercial({...base,tipo:'personalizada',personalizada:{maquina:'Equipo solicitado',cantidad:2,presupuesto:''}});
+  validarSolicitudComercial({...base,productos:[{producto_id:1,cantidad:3}]},[{id:1}]);
+  for(const cantidad of [0,-1,1.5,1000])assert.throws(()=>validarSolicitudComercial({...base,productos:[{producto_id:1,cantidad}]},[{id:1}]));
+  assert.throws(()=>validarSolicitudComercial({...base,website:'spam',productos:[{producto_id:1,cantidad:1}]},[{id:1}]));
+});
+
+test('se puede guardar y publicar con precio a consultar sin inventar un valor',()=>{
+  const m=modeloAdmin();m.validarProducto({...producto(),precio:null,publicado:false});
+  m.validarProducto({...producto(),precio:null,publicado:true});
+});
+test('búsqueda por uso, idioma, modelo y acentos; filtros y precio desconocido',()=>{
+  const m=new ProductoModel();m.productos=[{id:1,nombre:'Linear Leg Press',marca:'Hammer Strength',modelo:'HS-01',area:'Piernas',categoria:'Palanca',precio:1000,existencias:1,estado:'disponible'},{id:2,nombre:'Bíceps',marca:'Life Fitness',precio:null,existencias:0,estado:'vendida'},{id:3,nombre:'Otra prensa',marca:'Otra',precio:2000,preventa:true,precio_especial:1500,existencias:0}];
+  assert.equal(m.filtrar({busqueda:'prensa hammer'})[0].id,1);assert.equal(m.filtrar({busqueda:'piernas'})[0].id,1);assert.equal(m.filtrar({busqueda:'HS 01'})[0].id,1);assert.equal(m.filtrar({busqueda:'biceps'})[0].id,2);
+  assert.deepEqual(m.filtrar({precioMinimo:1100,precioMaximo:1800}).map(p=>p.id),[3]);assert.deepEqual(m.filtrar({comercial:'preventa'}).map(p=>p.id),[3]);assert.deepEqual(m.filtrar({disponibilidad:'disponible'}).map(p=>p.id),[1]);assert.equal(m.filtrar({orden:'precio-desc'}).at(-1).id,2);
+});
+
+test('no confirma éxito si la respuesta del servidor conserva la máquina oculta',async()=>{
+ const m=modeloAdmin();m.solicitar=async()=>[{...producto(),id:5,publicado:false}];
+ await assert.rejects(()=>m.guardarProducto({...producto(),id:5,publicado:true}),error=>error.datosGuardados===true&&error.message.includes('publicado'));
 });

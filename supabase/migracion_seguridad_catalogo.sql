@@ -47,10 +47,11 @@ BEGIN
  IF length(coalesce(NEW.descripcion,''))>5000 THEN RAISE EXCEPTION 'Descripción demasiado larga'; END IF;
  IF NEW.existencias IS NULL OR NEW.existencias<0 OR NEW.existencias<>trunc(NEW.existencias)
  THEN RAISE EXCEPTION 'Existencias inválidas'; END IF;
- IF NEW.precio IS NULL OR NEW.precio<0 OR NEW.precio>9999999999
+ IF NEW.precio IS NOT NULL AND (NEW.precio<0 OR NEW.precio>9999999999)
  THEN RAISE EXCEPTION 'Precio inválido'; END IF;
  IF NEW.estado IS NULL OR NEW.estado NOT IN ('disponible','reservada','vendida')
  THEN RAISE EXCEPTION 'Estado inválido'; END IF;
+ IF TG_OP='UPDATE' AND OLD.existencias=0 AND NEW.existencias>0 AND NEW.estado='vendida' AND OLD.estado='vendida' THEN NEW.estado:='disponible'; END IF;
  IF NEW.existencias=0 THEN NEW.estado:='vendida'; END IF;
  IF NEW.existencias>0 AND NEW.estado='vendida' THEN
    RAISE EXCEPTION 'Si quedan unidades, reduce las existencias sin marcar toda la máquina como vendida';

@@ -1,5 +1,5 @@
 
-import { supabaseConfig } from "../../../js/config/supabase.js";
+import { supabaseConfig } from "../../../js/config/supabase.js?v=14";
 
 export class AdminModel {
   constructor() {
@@ -48,6 +48,7 @@ export class AdminModel {
 
     const respuesta = await fetch(urlCompleta, {
       ...opciones,
+      cache: "no-store",
       headers
     });
 
@@ -64,7 +65,7 @@ export class AdminModel {
           detalle;
       } catch {}
 
-      if (respuesta.status === 401) {
+      if (respuesta.status === 401 && autenticado) {
         this.cerrarSesion();
       }
 
@@ -143,7 +144,7 @@ export class AdminModel {
   async obtenerProductos() {
     this.comprobarSesion();
 
-    return await this.solicitar(
+    return await this.obtenerColeccion(
       "/rest/v1/productos?select=*&order=id.desc"
     );
   }
@@ -166,6 +167,7 @@ export class AdminModel {
         }
       );
       if (!resultado?.length) throw new Error("La máquina no existe o no tienes permiso para editarla.");
+      this.confirmarGuardado(resultado[0],datos);
       return resultado;
     }
 
@@ -173,7 +175,28 @@ export class AdminModel {
       method: 'POST', headers: { Prefer: 'return=representation' }, body: JSON.stringify(datos)
     });
     if (!resultado?.length) throw new Error('No se pudo confirmar el registro de la máquina.');
+    this.confirmarGuardado(resultado[0],datos);
     return resultado;
+  }
+
+  confirmarGuardado(registro,datos){
+    const numeros=['precio','precio_especial','existencias'];
+    for(const campo of ['nombre','marca','categoria','descripcion','precio','precio_especial','existencias','estado','oferta','publicado','imagen_url','imagenes']){
+      if(!(campo in datos))continue;
+      let esperado=datos[campo],actual=registro[campo];
+      if(numeros.includes(campo)){esperado=esperado==null?null:Number(esperado);actual=actual==null?null:Number(actual);}
+      else if(['categoria','descripcion','imagen_url'].includes(campo)){esperado=esperado??'';actual=actual??'';}
+      if(JSON.stringify(esperado)!==JSON.stringify(actual)){
+        const error=new Error(`El servidor no conservó el cambio en «${campo}». No se confirmó el guardado; revisa ese dato antes de cerrar la edición.`);
+        error.datosGuardados=true;throw error;
+      }
+    }
+  }
+
+  async comprobarPublicacion(id) {
+    const filas=await this.solicitar(`/rest/v1/productos?id=eq.${encodeURIComponent(id)}&publicado=eq.true&select=id,nombre,precio,existencias,imagen_url`,{},false);
+    if(!filas?.length)throw new Error('El catálogo público aún no puede leer esta máquina. Revisa su publicación y los permisos de lectura.');
+    return filas[0];
   }
 
   async eliminarProducto(id) {
@@ -190,7 +213,7 @@ export class AdminModel {
         !producto.marca?.trim() || producto.marca.length > 100 ||
         typeof producto.descripcion !== 'string' || producto.descripcion.length > 5000 ||
         !Number.isSafeInteger(producto.existencias) || producto.existencias < 0 ||
-        !Number.isFinite(producto.precio) || producto.precio < 0 || producto.precio > 9999999999 ||
+        (producto.precio!==null&&(!Number.isFinite(producto.precio)||producto.precio<0||producto.precio>9999999999)) ||
         !['disponible','reservada','vendida'].includes(producto.estado)) {
       throw new Error('Revisa el nombre, marca, descripción, precio, existencias y estado de la máquina.');
     }
@@ -238,17 +261,60 @@ export class AdminModel {
     if(!respuesta.ok)throw new Error('No se pudo eliminar la imagen sin utilizar.');
   }
 
-  async obtenerSolicitudes() {
+  async obtenerColeccion(ruta) {
     this.comprobarSesion();
-    return await this.solicitar('/rest/v1/solicitudes?select=*,solicitud_productos(nombre_producto,producto_id)&order=creado_en.desc');
+    const filas=[];
+    for(let offset=0;;offset+=1000){
+      const pagina=await this.solicitar(`${ruta}${ruta.includes('?')?'&':'?'}limit=1000&offset=${offset}`);
+      filas.push(...pagina);if(pagina.length<1000)return filas;
+    }
   }
 
-  async actualizarSolicitud(id,estado) {
+  async obtenerComercial() {
+    const nombres=['clientes','solicitudes','seguimientos','cotizaciones','ventas','pagos'];
+    const valores=await Promise.all(nombres.map(nombre=>this.obtenerColeccion(`/rest/v1/${nombre}?select=${nombre==='solicitudes'?'*,solicitud_productos(*)':'*'}&order=id.desc`)));
+    const datos=Object.fromEntries(nombres.map((nombre,i)=>[nombre,valores[i]]));
+    try{datos.clientes_fuentes=await this.obtenerColeccion('/rest/v1/clientes_fuentes?select=*&order=pagina.asc,fila.asc');}
+    catch(error){if(![400,404].includes(error.respuestaHttp))throw error;datos.clientes_fuentes=[];}
+    return datos;
+  }
+
+  async guardarCliente(datos) {
     this.comprobarSesion();
-    if(!['pendiente','contactado','finalizado'].includes(estado))throw new Error('Estado de seguimiento inválido.');
-    const resultado=await this.solicitar(`/rest/v1/solicitudes?id=eq.${encodeURIComponent(id)}`,{method:'PATCH',headers:{Prefer:'return=representation'},body:JSON.stringify({estado})});
-    if(!resultado?.length)throw new Error('La solicitud no existe o no tienes permiso para actualizarla.');
-    return resultado;
+    const {id,...campos}=datos;
+    try {
+      const filas=await this.solicitar(`/rest/v1/clientes${id?'?id=eq.'+encodeURIComponent(id):''}`,{
+        method:id?'PATCH':'POST',headers:{Prefer:'return=representation'},body:JSON.stringify(campos)
+      });
+      if(!filas?.length)throw new Error('No se pudo guardar el cliente.');return filas[0];
+    } catch(error) {
+      if(error.respuestaHttp===409)throw new Error('Ya existe una ficha con ese teléfono. Búscala en el Directorio.');
+      throw error;
+    }
+  }
+
+  async actualizarSolicitud(id,campos) {
+    this.comprobarSesion();
+    const permitidos={};
+    for(const nombre of ['estado_comercial','asesor'])if(nombre in campos)permitidos[nombre]=campos[nombre];
+    const filas=await this.solicitar(`/rest/v1/solicitudes?id=eq.${encodeURIComponent(id)}`,{
+      method:'PATCH',headers:{Prefer:'return=representation'},body:JSON.stringify(permitidos)
+    });
+    if(!filas?.length)throw new Error('La solicitud no existe o no tienes permiso para actualizarla.');return filas[0];
+  }
+
+  async accionComercial(nombre,datos) {
+    this.comprobarSesion();
+    if(!['registrar_solicitud_interna','guardar_seguimiento','completar_seguimiento','guardar_cotizacion','cambiar_cotizacion','confirmar_venta','registrar_pago'].includes(nombre))throw new Error('Acción inválida.');
+    return await this.solicitar(`/rest/v1/rpc/${nombre}`,{method:'POST',body:JSON.stringify(datos)});
+  }
+
+  async actualizarEntrega(id,estado_entrega) {
+    this.comprobarSesion();
+    const filas=await this.solicitar(`/rest/v1/ventas?id=eq.${encodeURIComponent(id)}`,{
+      method:'PATCH',headers:{Prefer:'return=representation'},body:JSON.stringify({estado_entrega})
+    });
+    if(!filas?.length)throw new Error('No se pudo actualizar la entrega.');
   }
 
   cerrarSesion() {

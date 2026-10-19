@@ -1,145 +1,73 @@
-
-<!DOCTYPE html>
+<!doctype html>
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport"
-        content="width=device-width, initial-scale=1.0">
-
-  <meta name="description"
-        content="FitGear Venta y Renta. Equipos comerciales para gimnasios.">
-
-  <title>FitGear | Venta y Renta de Equipos</title>
-
-  <link rel="stylesheet" href="./css/style.css?v=8">
-
-  <script type="module" src="./js/app.js"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="description" content="Explora máquinas profesionales de gimnasio en FitGear Venta y Renta. Consulta disponibilidad y solicita una cotización de uno o varios equipos.">
+  <title>FitGear | Máquinas para tu gimnasio</title>
+  <link rel="stylesheet" href="./css/style.css?v=14">
+  <script type="module" src="./js/app.js?v=14"></script>
 </head>
-
 <body>
+  <a class="saltar-contenido" href="#buscar-producto">Ir a los equipos</a>
   <main>
-    <section class="hero" id="inicio">
+    <section class="hero" id="inicio" aria-labelledby="titulo-inicio">
       <div class="contenedor hero-contenido">
-        <span class="etiqueta">
-          EQUIPAMIENTO COMERCIAL
-        </span>
-
-        <h1>Equipa tu gimnasio con lo mejor</h1>
-
-        <p>
-          Máquinas profesionales de las mejores marcas.
-          Venta, renta y preventa de equipos para gimnasios.
-        </p>
-
-        <div class="hero-acciones">
-          <a href="#catalogo" class="boton boton-principal">
-            Explorar catálogo
-          </a>
-
-          <a href="#contacto" class="boton boton-secundario">
-            Contáctanos
-          </a>
-        </div>
+        <span class="etiqueta">FITGEAR · VENTA Y RENTA</span>
+        <h1 id="titulo-inicio">Equipa tu gimnasio con lo mejor</h1>
+        <p>Máquinas profesionales para tu gimnasio. Explora equipos y consulta opciones de compra, renta y preventa.</p>
+        <a href="#catalogo" class="boton boton-principal">Explorar equipos</a>
+        <span class="hero-nota">Cotiza sin crear una cuenta ni realizar pagos en línea.</span>
       </div>
     </section>
 
-    <section class="beneficios">
-      <div class="contenedor beneficios-grid">
-        <article>
-          <h3>Equipos comerciales</h3>
-          <p>Máquinas para gimnasios profesionales.</p>
-        </article>
-
-        <article>
-          <h3>Marcas reconocidas</h3>
-          <p>
-            Hammer Strength, Life Fitness,
-            Cybex y Nautilus.
-          </p>
-        </article>
-
-        <article>
-          <h3>Venta y preventa</h3>
-          <p>
-            Consulta disponibilidad y solicita información.
-          </p>
-        </article>
-      </div>
-    </section>
-
-    <section class="seccion-catalogo" id="catalogo">
+    <section class="seccion-catalogo" id="catalogo" aria-labelledby="titulo-catalogo">
       <div class="contenedor">
-        <div class="titulo-seccion">
-          <span class="subtitulo">NUESTROS EQUIPOS</span>
-          <h2>Catálogo de máquinas</h2>
-          <p>
-            Explora nuestros equipos por marca y categoría.
-          </p>
+        <div class="titulo-seccion"><div><span class="subtitulo">ENCUENTRA TU EQUIPO</span><h2 id="titulo-catalogo">Catálogo de máquinas</h2></div><a href="#contacto" class="enlace-texto">¿Necesitas orientación?</a></div>
+        <div class="buscador-catalogo" role="search">
+          <div class="campo campo-busqueda"><label for="buscar-producto">¿Qué máquina buscas?</label><input type="search" id="buscar-producto" placeholder="Nombre, marca, modelo o área de entrenamiento" autocomplete="off"></div>
+          <button id="abrir-filtros" type="button" class="boton boton-neutral" aria-controls="filtros-avanzados" aria-expanded="false">Filtros</button>
         </div>
-
-        <div class="filtros">
-          <div class="campo">
-            <label for="buscar-producto">
-              Buscar máquina
-            </label>
-            <input
-              type="search"
-              id="buscar-producto"
-              placeholder="Ej. prensa, pecho, remo..."
-            >
-          </div>
-
-          <div class="campo">
-            <label for="filtro-marca">Marca</label>
-            <select id="filtro-marca">
-              <option value="">Todas las marcas</option>
-            </select>
-          </div>
-
-          <div class="campo">
-            <label for="filtro-categoria">Categoría</label>
-            <select id="filtro-categoria">
-              <option value="">Todas las categorías</option>
-            </select>
-          </div>
+        <div id="filtros-avanzados" class="filtros" hidden>
+          <div class="campo"><label for="filtro-marca">Marca</label><select id="filtro-marca"><option value="">Todas las marcas</option></select></div>
+          <div class="campo"><label for="filtro-categoria">Categoría</label><select id="filtro-categoria"><option value="">Todas las categorías</option></select></div>
+          <div class="campo"><label for="filtro-disponibilidad">Disponibilidad</label><select id="filtro-disponibilidad"><option value="">Todas</option><option value="disponible">Disponibles</option><option value="reservada">Reservadas</option><option value="vendida">Vendidas / sin existencias</option></select></div>
+          <div class="campo"><label for="filtro-comercial">Tipo de oferta</label><select id="filtro-comercial"><option value="">Todos los equipos</option><option value="preventa">En preventa</option><option value="oferta">En oferta</option></select></div>
+          <div class="campo"><label for="precio-minimo">Precio desde (Q)</label><input id="precio-minimo" type="number" min="0" step="0.01" inputmode="decimal" placeholder="Sin mínimo"></div>
+          <div class="campo"><label for="precio-maximo">Precio hasta (Q)</label><input id="precio-maximo" type="number" min="0" step="0.01" inputmode="decimal" placeholder="Sin máximo"></div>
+          <p class="ayuda ancho-completo">El rango de precio incluye únicamente equipos con precio publicado.</p>
         </div>
-
-        <div class="barra-interes"><strong id="cantidad-seleccion">0 máquina(s) seleccionada(s)</strong><button id="abrir-solicitud" type="button" class="boton boton-principal">Solicitar información</button></div>
-        <section id="solicitud-dialogo" class="solicitud-formulario" hidden><h3>Solicitud de información</h3><p>Selecciona las máquinas y déjanos tus datos. No se realiza ninguna compra.</p><div id="solicitud-maquinas" class="lista-seleccion"></div><form id="form-solicitud"><label>Nombre completo *<input name="nombre" maxlength="120" minlength="3" autocomplete="name" required></label><label>WhatsApp o teléfono *<input name="telefono" type="tel" minlength="8" maxlength="22" autocomplete="tel" required></label><label>Correo electrónico *<input name="correo" type="email" maxlength="254" autocomplete="email" required></label><label>Mensaje adicional<textarea name="mensaje" maxlength="2000" rows="3"></textarea></label><div class="acciones-solicitud"><button type="submit" class="boton boton-principal">Enviar solicitud</button><button id="cerrar-formulario" type="button" class="boton boton-neutral">Cerrar</button></div><p id="resultado-solicitud" role="status" aria-live="polite"></p></form></section>
-        <p id="contador-productos" class="contador"></p>
-
-        <div id="lista-productos" class="grid-productos">
-        </div>
-
-        <p id="mensaje-vacio" class="estado-catalogo" hidden>
-          No encontramos máquinas con esos filtros.
-        </p>
+        <div class="herramientas-catalogo"><p id="contador-productos" class="contador" role="status" aria-live="polite"></p><div class="acciones-filtros"><button id="limpiar-filtros" type="button" class="enlace-texto" hidden>Limpiar filtros</button><label for="orden-productos" class="sr-only">Ordenar equipos</label><select id="orden-productos"><option value="disponibilidad">Disponibles primero</option><option value="precio-asc">Menor precio</option><option value="precio-desc">Mayor precio</option><option value="nombre">Nombre A–Z</option></select></div></div>
+        <p id="aviso-catalogo" class="aviso-catalogo" role="status" aria-live="polite" hidden></p>
+        <div id="lista-productos" class="grid-productos"></div>
+        <div id="mensaje-vacio" class="estado-catalogo" hidden><h3>No encontramos equipos con esta búsqueda</h3><p>Prueba otro nombre o elimina algún filtro. También puedes pedirnos una máquina que aún no aparece en el catálogo.</p><button id="restablecer-busqueda" type="button" class="boton boton-principal">Limpiar búsqueda y filtros</button></div>
+        <div class="consulta-personalizada"><div><h3>¿No encuentras la máquina que necesitas?</h3><p>Dinos qué equipo buscas y cuántas unidades necesitas.</p></div><button id="solicitud-personalizada" type="button" class="boton boton-contorno">Solicitar un equipo</button></div>
       </div>
     </section>
 
-    <section class="contacto" id="contacto">
-      <div class="contenedor contacto-contenido">
-        <span class="subtitulo">FITGEAR VENTA Y RENTA</span>
-
-        <h2>¿Estás equipando tu gimnasio?</h2>
-
-        <p>
-          Solicita información sobre nuestras máquinas,
-          disponibilidad y opciones de compra.
-        </p>
-
-        <a class="boton boton-principal" href="#catalogo">Seleccionar máquinas y consultar</a>
-      </div>
-    </section>
+    <section class="contacto" id="contacto" aria-labelledby="titulo-contacto"><div class="contenedor contacto-contenido"><div><span class="subtitulo">ATENCIÓN FITGEAR</span><h2 id="titulo-contacto">Hablemos de tu próximo equipo</h2><p>Envíanos lo que buscas. Revisaremos disponibilidad y opciones para continuar la conversación por el teléfono que indiques.</p><div id="contactos-oficiales" class="contactos-oficiales"></div><p id="horario-contacto" hidden></p></div><div><h3>Así funciona tu cotización</h3><ol><li>Elige un equipo o arma tu lista.</li><li>Indica cantidades y déjanos tus datos.</li><li>FitGear revisará tu consulta y confirmará precios, disponibilidad y condiciones.</li></ol><button id="consulta-asesoria" type="button" class="boton boton-principal">Consultar un equipo</button></div></div></section>
   </main>
+  <footer class="pie"><div class="contenedor"><p>© <span id="anio-actual"></span> FitGear Venta y Renta.</p><span>Equipamiento comercial para gimnasios.</span></div></footer>
 
-  <footer class="pie">
-    <div class="contenedor">
-      <p>
-        © <span id="anio-actual"></span>
-        FitGear Venta y Renta.
-      </p>
-    </div>
-  </footer>
+  <aside class="barra-interes" aria-label="Tu cotización" hidden><div><strong>Mi cotización de equipos</strong><p id="cantidad-seleccion">0 equipos seleccionados</p></div><button id="abrir-solicitud" type="button" class="boton boton-principal">Revisar cotización</button></aside>
+  <dialog id="solicitud-dialogo" class="solicitud-modal" aria-labelledby="titulo-solicitud">
+    <div class="solicitud-cabecera"><h2 id="titulo-solicitud">Mi cotización de equipos</h2><button id="cerrar-formulario" type="button" class="boton boton-neutral">Cerrar</button></div>
+    <p id="introduccion-solicitud">Revisaremos disponibilidad y te contactaremos por el teléfono que indiques. No se realiza ningún pago en línea.</p>
+    <form id="form-solicitud">
+      <div id="solicitud-maquinas" class="equipos-solicitud"></div>
+      <p id="resumen-precio-solicitud" class="resumen-precio" hidden></p>
+      <fieldset id="campos-personalizados" class="solicitud-campos" disabled hidden><legend class="sr-only">Equipo que necesitas</legend>
+        <label>Marca que buscas (opcional)<input name="marca_buscada" maxlength="100"></label><label>Máquina o modelo *<input name="maquina_buscada" maxlength="160"></label>
+        <label>Cantidad *<input name="cantidad_personalizada" type="number" min="1" max="999" step="1" value="1" inputmode="numeric"></label><label>Presupuesto aproximado Q (opcional)<input name="presupuesto" type="number" min="0" max="9999999999" step="0.01" inputmode="decimal"></label>
+      </fieldset>
+      <div class="solicitud-campos"><label>Nombre completo *<input name="nombre" maxlength="120" minlength="3" autocomplete="name" required></label><label>Teléfono o WhatsApp *<input name="telefono" type="tel" minlength="8" maxlength="22" autocomplete="tel" required placeholder="Ej. 5555 5555"></label><label class="solicitud-ancho">Me interesa<select name="operacion"><option value="compra">Comprar</option><option value="preventa">Consultar preventa</option><option value="renta">Rentar</option></select></label></div>
+      <details class="datos-opcionales"><summary>Agregar correo o comentario (opcional)</summary><div class="solicitud-campos"><label>Correo electrónico<input name="correo" type="email" maxlength="254" autocomplete="email"></label><label>Comentario o pregunta<textarea name="mensaje" maxlength="2000" rows="3"></textarea></label></div></details>
+      <div class="campo-antibot" aria-hidden="true"><label>Dejar vacío<input name="website" tabindex="-1" autocomplete="off"></label></div>
+      <p class="ayuda">Usaremos los datos que envíes para atender esta consulta comercial.</p>
+      <div class="solicitud-pie"><button type="submit" class="boton boton-principal">Enviar solicitud</button><span class="ayuda">Sin cuenta y sin pagos en línea.</span></div>
+    </form>
+    <p id="resultado-solicitud" role="status" aria-live="polite" tabindex="-1"></p>
+    <button id="seguir-explorando" type="button" class="boton boton-contorno" hidden>Seguir explorando equipos</button>
+  </dialog>
 </body>
 </html>
