@@ -55,6 +55,7 @@ export class ProductoModel {
     const registros = await respuesta.json();
 
     this.productos = registros.map((producto) => ({
+      ...producto,
       id: producto.id,
       nombre: producto.nombre ?? "",
       marca: producto.marca ?? "",
@@ -67,10 +68,22 @@ export class ProductoModel {
       peso_kg: producto.peso_kg,
       dimensiones: producto.dimensiones ?? "",
       imagen: producto.imagen_url ?? "",
-      estado: producto.estado ?? "consultar"
+      estado: producto.estado ?? "vendida",
+      oferta: Boolean(producto.oferta),
+      imagenes: Array.isArray(producto.imagenes) ? producto.imagenes : []
     }));
 
     return [...this.productos];
+  }
+
+  async enviarSolicitud(datos) {
+    const {url,key}=supabaseConfig;
+    const respuesta=await fetch(`${url}/rest/v1/rpc/registrar_solicitud`,{
+      method:'POST',headers:{apikey:key,'Content-Type':'application/json',Accept:'application/json'},
+      body:JSON.stringify({p_nombre:datos.nombre,p_telefono:datos.telefono,p_correo:datos.correo,p_mensaje:datos.mensaje,p_productos:datos.productos})
+    });
+    if(!respuesta.ok){let msg='No se pudo registrar la solicitud.';try{const err=await respuesta.json();msg=err.message||msg;}catch{}throw new Error(msg);}
+    return await respuesta.json();
   }
 
   obtenerMarcas() {

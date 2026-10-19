@@ -1,35 +1,8 @@
-
 export class CatalogoController {
-  constructor(modelo, vista) {
-    this.modelo = modelo;
-    this.vista = vista;
-  }
-
-  async iniciar() {
-    this.vista.mostrarCargando();
-
-    this.vista.escucharFiltros(() => {
-      this.actualizarCatalogo();
-    });
-
-    try {
-      await this.modelo.obtenerTodos();
-
-      this.vista.configurarFiltros(
-        this.modelo.obtenerMarcas(),
-        this.modelo.obtenerCategorias()
-      );
-
-      this.actualizarCatalogo();
-    } catch (error) {
-      console.error("Error al cargar FitGear:", error);
-      this.vista.mostrarError(error);
-    }
-  }
-
-  actualizarCatalogo() {
-    const filtros = this.vista.obtenerFiltros();
-    const productos = this.modelo.filtrar(filtros);
-    this.vista.mostrarProductos(productos);
-  }
+ constructor(modelo,vista){this.modelo=modelo;this.vista=vista;this.seleccion=new Set();}
+ async iniciar(){this.vista.mostrarCargando();this.vista.escucharFiltros(()=>this.actualizarCatalogo());this.vista.onSeleccion=id=>{if(this.seleccion.has(id))this.seleccion.delete(id);else this.seleccion.add(id);this.vista.seleccion=this.seleccion;this.actualizarCatalogo();this.actualizarSeleccion();};document.querySelector('#abrir-solicitud').addEventListener('click',()=>this.abrirFormulario());document.querySelector('#form-solicitud').addEventListener('submit',e=>this.enviar(e));document.querySelector('#cerrar-formulario').addEventListener('click',()=>document.querySelector('#solicitud-dialogo').hidden=true);try{await this.modelo.obtenerTodos();this.vista.configurarFiltros(this.modelo.obtenerMarcas(),this.modelo.obtenerCategorias());this.actualizarCatalogo();}catch(err){console.error(err);this.vista.mostrarError(err);}}
+ actualizarCatalogo(){this.vista.mostrarProductos(this.modelo.filtrar(this.vista.obtenerFiltros()));this.actualizarSeleccion();}
+ actualizarSeleccion(){document.querySelector('#cantidad-seleccion').textContent=`${this.seleccion.size} máquina(s) seleccionada(s)`;}
+ abrirFormulario(){const lista=document.querySelector('#solicitud-maquinas');lista.replaceChildren();for(const p of this.modelo.productos){const fila=document.createElement('label');fila.className='opcion-maquina';const cb=document.createElement('input');cb.type='checkbox';cb.value=String(p.id);cb.checked=this.seleccion.has(p.id);cb.addEventListener('change',()=>{if(cb.checked)this.seleccion.add(p.id);else this.seleccion.delete(p.id);this.vista.seleccion=this.seleccion;this.actualizarSeleccion();this.actualizarCatalogo();});fila.append(cb,document.createTextNode(' '+p.nombre+' · '+p.marca));lista.append(fila);}document.querySelector('#solicitud-dialogo').hidden=false;document.querySelector('#solicitud-dialogo').scrollIntoView({behavior:'smooth'});}
+ async enviar(e){e.preventDefault();const f=e.currentTarget;const nombre=f.elements.nombre.value.trim(),telefono=f.elements.telefono.value.trim(),correo=f.elements.correo.value.trim(),mensaje=f.elements.mensaje.value.trim();const productos=[...this.seleccion];const aviso=document.querySelector('#resultado-solicitud');if(nombre.length<3||nombre.length>120||!/^\+?[0-9 ()-]{8,22}$/.test(telefono)||telefono.replace(/\D/g,'').length<8||!f.elements.correo.checkValidity()||mensaje.length>2000||productos.length<1||productos.length>20){aviso.textContent='Revisa tus datos y selecciona entre 1 y 20 máquinas.';return;}const boton=f.querySelector('[type=submit]');boton.disabled=true;aviso.textContent='Enviando solicitud...';try{await this.modelo.enviarSolicitud({nombre,telefono,correo,mensaje,productos});aviso.textContent='¡Solicitud recibida! FitGear podrá contactarte con la información que proporcionaste.';f.reset();this.seleccion.clear();this.vista.seleccion=this.seleccion;this.actualizarCatalogo();this.abrirFormulario();}catch(err){aviso.textContent='No se pudo enviar: '+err.message;}finally{boton.disabled=false;}}
 }

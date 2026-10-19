@@ -187,6 +187,40 @@ export class AdminModel {
     );
   }
 
+  validarImagen(archivo) {
+    const tipos=['image/jpeg','image/png','image/webp','image/gif','image/avif'];
+    if(!tipos.includes(archivo.type))throw new Error('Formato de imagen no permitido.');
+    if(!archivo.size||archivo.size>5*1024*1024)throw new Error('La imagen debe pesar menos de 5 MB.');
+  }
+
+  async subirImagen(archivo) {
+    this.comprobarSesion();this.validarImagen(archivo);
+    const extension=({'image/jpeg':'jpg','image/png':'png','image/webp':'webp','image/gif':'gif','image/avif':'avif'})[archivo.type];
+    const ruta=`${crypto.randomUUID()}.${extension}`;
+    const respuesta=await fetch(`${this.url}/storage/v1/object/maquinas/${ruta}`,{method:'POST',headers:{apikey:this.key,Authorization:`Bearer ${this.token}`,'Content-Type':archivo.type,'x-upsert':'false'},body:archivo});
+    if(!respuesta.ok){let error='No se pudo subir la imagen.';try{const data=await respuesta.json();error=data.message||data.error||error;}catch{}throw new Error(error);}
+    return `${this.url}/storage/v1/object/public/maquinas/${ruta}`;
+  }
+
+  async eliminarImagen(url) {
+    const prefijo=`${this.url}/storage/v1/object/public/maquinas/`;
+    if(!url.startsWith(prefijo))return;
+    const ruta=url.slice(prefijo.length);
+    const respuesta=await fetch(`${this.url}/storage/v1/object/maquinas/${ruta}`,{method:'DELETE',headers:{apikey:this.key,Authorization:`Bearer ${this.token}`}});
+    if(!respuesta.ok)throw new Error('No se pudo eliminar la imagen sin utilizar.');
+  }
+
+  async obtenerSolicitudes() {
+    this.comprobarSesion();
+    return await this.solicitar('/rest/v1/solicitudes?select=*,solicitud_productos(nombre_producto,producto_id)&order=creado_en.desc');
+  }
+
+  async actualizarSolicitud(id,estado) {
+    this.comprobarSesion();
+    if(!['pendiente','contactado','finalizado'].includes(estado))throw new Error('Estado de seguimiento inválido.');
+    return await this.solicitar(`/rest/v1/solicitudes?id=eq.${encodeURIComponent(id)}`,{method:'PATCH',body:JSON.stringify({estado})});
+  }
+
   cerrarSesion() {
     this.token = null;
     this.expira = 0;

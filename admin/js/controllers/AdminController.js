@@ -1,114 +1,15 @@
-
 export class AdminController {
-  constructor(modelo, vista) {
-    this.modelo = modelo;
-    this.vista = vista;
-    this.productos = [];
-  }
-
-  iniciar() {
-    this.vista.mostrarPanel(false);
-
-    this.vista.formLogin.addEventListener(
-      "submit",
-      async evento => {
-        evento.preventDefault();
-
-        const email = document.querySelector("#email").value;
-        const password = document.querySelector("#password").value;
-
-        this.vista.notificar("Verificando acceso...");
-
-        try {
-          await this.modelo.iniciarSesion(email, password);
-          this.vista.formLogin.reset();
-          this.vista.mostrarPanel(true);
-          await this.cargarProductos();
-          this.vista.notificar("Sesión ADMIN iniciada.");
-        } catch (error) {
-          this.vista.mostrarPanel(false);
-          this.vista.notificar(error.message, true);
-        }
-      }
-    );
-
-    this.vista.formProducto.addEventListener(
-      "submit",
-      async evento => {
-        evento.preventDefault();
-
-        const producto = this.vista.leerFormulario();
-
-        if (!producto.nombre || !producto.marca ||
-            !producto.area || !producto.categoria) {
-          this.vista.notificar(
-            "Completa los campos obligatorios.",
-            true
-          );
-          return;
-        }
-
-        this.vista.guardar.disabled = true;
-
-        try {
-          await this.modelo.guardarProducto(producto);
-          this.vista.limpiarFormulario();
-          await this.cargarProductos();
-          this.vista.notificar("Máquina guardada correctamente.");
-        } catch (error) {
-          this.vista.notificar(error.message, true);
-        } finally {
-          this.vista.guardar.disabled = false;
-        }
-      }
-    );
-
-    document.querySelector("#nuevo-producto")
-      .addEventListener("click", () => {
-        this.vista.limpiarFormulario();
-        this.vista.formProducto.scrollIntoView({
-          behavior: "smooth"
-        });
-      });
-
-    document.querySelector("#cancelar-edicion")
-      .addEventListener("click", () => {
-        this.vista.limpiarFormulario();
-      });
-
-    this.vista.salir.addEventListener("click", () => {
-      this.modelo.cerrarSesion();
-      this.productos = [];
-      this.vista.lista.replaceChildren();
-      this.vista.limpiarFormulario();
-      this.vista.mostrarPanel(false);
-      this.vista.notificar("Sesión cerrada.");
-    });
-  }
-
-  async cargarProductos() {
-    this.productos = await this.modelo.obtenerProductos();
-
-    this.vista.mostrarProductos(
-      this.productos,
-      producto => this.vista.editar(producto),
-      producto => this.eliminarProducto(producto)
-    );
-  }
-
-  async eliminarProducto(producto) {
-    const confirmar = window.confirm(
-      `¿Eliminar definitivamente "${producto.nombre}"?`
-    );
-
-    if (!confirmar) return;
-
-    try {
-      await this.modelo.eliminarProducto(producto.id);
-      await this.cargarProductos();
-      this.vista.notificar("Máquina eliminada.");
-    } catch (error) {
-      this.vista.notificar(error.message, true);
-    }
-  }
+ constructor(modelo,vista){this.modelo=modelo;this.vista=vista;this.productos=[];}
+ iniciar(){this.vista.mostrarPanel(false);document.querySelectorAll('[data-seccion]').forEach(b=>b.addEventListener('click',()=>this.vista.mostrarSeccion(b.dataset.seccion)));this.vista.formLogin.addEventListener('submit',async e=>{e.preventDefault();this.vista.notificar('Verificando acceso...');try{await this.modelo.iniciarSesion(document.querySelector('#email').value,document.querySelector('#password').value);this.vista.formLogin.reset();this.vista.mostrarPanel(true);await Promise.all([this.cargarProductos(),this.cargarSolicitudes()]);this.vista.notificar('Sesión ADMIN iniciada.');}catch(err){this.vista.notificar(err.message,true);if(!this.modelo.token)this.vista.mostrarPanel(false);}});
+ this.vista.formProducto.elements.imagen.addEventListener('change',()=>this.vista.previsualizarArchivo());this.vista.formProducto.addEventListener('submit',async e=>{e.preventDefault();const p=this.vista.leerFormulario();if(!p.nombre||!p.marca||!Number.isInteger(p.existencias)||p.existencias<0||!Number.isFinite(p.precio)||p.precio<0||!['disponible','reservada','vendida'].includes(p.estado)){this.vista.notificar('Revisa los campos de la máquina.',true);return;}if(p.existencias===0)p.estado='vendida';if(p.existencias>0&&p.estado==='vendida'){this.vista.notificar('Para marcar vendida toda la máquina, las existencias deben ser cero.',true);return;}this.vista.guardar.disabled=true;try{const {fotos,...datos}=p;datos.publicado=true;const subidas=[];const urls=[];
+ try{for(const foto of fotos)if(foto.archivo)this.modelo.validarImagen(foto.archivo);
+ for(const foto of fotos){if(foto.archivo){const url=await this.modelo.subirImagen(foto.archivo);subidas.push(url);urls.push(url);}else urls.push(foto.url);}
+ datos.imagen_url=urls[0]||null;datos.imagenes=urls;
+ await this.modelo.guardarProducto(datos);
+ }catch(err){await Promise.allSettled(subidas.map(url=>this.modelo.eliminarImagen(url)));throw err;}
+ this.vista.limpiarFormulario();await this.cargarProductos();this.vista.notificar('Máquina guardada correctamente.');}catch(err){this.vista.notificar(err.message,true);}finally{this.vista.guardar.disabled=false;}});
+ document.querySelector('#nuevo-producto').addEventListener('click',()=>{this.vista.limpiarFormulario();this.vista.formProducto.scrollIntoView({behavior:'smooth'});});document.querySelector('#cancelar-edicion').addEventListener('click',()=>this.vista.limpiarFormulario());document.querySelector('#actualizar-solicitudes').addEventListener('click',()=>this.cargarSolicitudes().catch(e=>this.vista.notificar(e.message,true)));this.vista.salir.addEventListener('click',()=>{this.modelo.cerrarSesion();this.productos=[];this.vista.lista.replaceChildren();document.querySelector('#lista-solicitudes').replaceChildren();this.vista.limpiarFormulario();this.vista.mostrarPanel(false);this.vista.notificar('Sesión cerrada.');});}
+ async cargarProductos(){this.productos=await this.modelo.obtenerProductos();this.vista.mostrarProductos(this.productos,p=>this.vista.editar(p),p=>this.eliminarProducto(p));}
+ async eliminarProducto(p){if(!confirm(`¿Eliminar definitivamente "${p.nombre}"?`))return;try{await this.modelo.eliminarProducto(p.id);await this.cargarProductos();this.vista.notificar('Máquina eliminada.');}catch(err){this.vista.notificar(err.message,true);}}
+ async cargarSolicitudes(){const s=await this.modelo.obtenerSolicitudes();this.vista.mostrarSolicitudes(s,async(sol,estado)=>{try{await this.modelo.actualizarSolicitud(sol.id,estado);sol.estado=estado;this.vista.resumirSolicitudes(s);this.vista.notificar('Seguimiento actualizado.');}catch(e){this.vista.notificar(e.message,true);throw e;}});}
 }

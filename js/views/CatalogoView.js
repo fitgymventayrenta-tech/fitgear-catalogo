@@ -7,6 +7,8 @@ export class CatalogoView {
     this.busqueda = document.querySelector("#buscar-producto");
     this.marca = document.querySelector("#filtro-marca");
     this.categoria = document.querySelector("#filtro-categoria");
+    this.seleccion=new Set();
+    this.onSeleccion=()=>{};
   }
 
   configurarFiltros(marcas, categorias) {
@@ -99,9 +101,9 @@ export class CatalogoView {
     const imagenContenedor = document.createElement("div");
     imagenContenedor.className = "producto-imagen";
 
-    if (producto.imagen) {
+    if (producto.imagen || producto.imagenes.length) {
       const imagen = document.createElement("img");
-      imagen.src = producto.imagen;
+      imagen.src = producto.imagen || producto.imagenes[0];
       imagen.alt = producto.nombre;
       imagen.loading = "lazy";
       imagen.onerror = () => {
@@ -153,30 +155,65 @@ export class CatalogoView {
         ? `Existencias: ${producto.existencias}`
         : "Disponibilidad a consultar";
 
-    const enlace = document.createElement("a");
+    const enlace = document.createElement("button");
     enlace.className = "boton-cotizar";
     enlace.textContent = "Solicitar información";
 
-    const asunto = `Consulta sobre ${producto.nombre}`;
-    const cuerpo =
-      `Hola, deseo información sobre la máquina ` +
-      `${producto.nombre} (${producto.marca}).`;
-
-    enlace.href =
-      `mailto:ventas@ejemplo.com?subject=${encodeURIComponent(asunto)}` +
-      `&body=${encodeURIComponent(cuerpo)}`;
-
+    enlace.type='button';
+    enlace.addEventListener('click',()=>this.onSeleccion(producto.id));
+    const estado=document.createElement('p');estado.className='producto-estado';
+    const disponible=producto.existencias>0&&producto.estado==='disponible';
+    estado.textContent=disponible?'Disponible':producto.estado==='reservada'?'Reservada':'Vendida / sin existencias';
+    if(!disponible)estado.classList.add('no-disponible');
+    const oferta=document.createElement('span');oferta.className='insignia-oferta';oferta.textContent='EN OFERTA';oferta.hidden=!producto.oferta;
+    enlace.textContent=this.seleccion.has(producto.id)?'✓ Seleccionada':'Me interesa';
+    enlace.setAttribute('aria-pressed',String(this.seleccion.has(producto.id)));
+    disponibilidad.textContent=`Existencias: ${producto.existencias}`;
+    const detalles=document.createElement('button');detalles.type='button';detalles.className='boton-detalles';detalles.textContent='Ver detalles y fotos';detalles.addEventListener('click',()=>this.mostrarDetalle(producto,detalles));
     contenido.append(
       marca,
       nombre,
+      oferta,
       categoria,
       descripcion,
       precio,
       disponibilidad,
+      estado,
+      detalles,
       enlace
     );
 
     tarjeta.append(imagenContenedor, contenido);
     return tarjeta;
   }
+  mostrarDetalle(producto,origen) {
+    const dialogo=document.createElement('dialog');dialogo.className='detalle-dialogo';dialogo.setAttribute('aria-label',`Detalles de ${producto.nombre}`);
+    const crear=(tag,clase,texto)=>{const e=document.createElement(tag);if(clase)e.className=clase;if(texto!==undefined)e.textContent=texto;return e;};
+    const boton=(texto,accion)=>{const b=crear('button','boton boton-neutral',texto);b.type='button';b.onclick=accion;return b;};
+    const cerrar=()=>dialogo.close();
+    const nav=crear('nav','detalle-navegacion');
+    nav.append(boton('Volver al catálogo',cerrar));
+    const grid=crear('div','detalle-grid');const galeria=crear('section','detalle-galeria');
+    const fotos=[...new Set([producto.imagen,...producto.imagenes].filter(u=>typeof u==='string'&&u))];
+    const principal=crear('img','detalle-foto');principal.alt=producto.nombre;
+    const marco=crear('div','detalle-marco');const miniaturas=crear('div','detalle-miniaturas');let actual=0;
+    const seleccionar=i=>{actual=i;principal.src=fotos[i];principal.alt=`${producto.nombre}, foto ${i+1}`;[...miniaturas.children].forEach((b,n)=>b.setAttribute('aria-pressed',String(n===i)));};
+    if(fotos.length){marco.append(principal);fotos.forEach((url,i)=>{const b=boton(`Foto ${i+1}`,()=>seleccionar(i));const img=crear('img');img.src=url;img.alt='';img.loading='lazy';b.prepend(img);miniaturas.append(b);});seleccionar(0);}else marco.textContent='Fotografía próximamente';
+    galeria.append(marco);
+    if(fotos.length>1)galeria.append(miniaturas);
+    if(fotos.length)galeria.append(boton('Ampliar fotografía',()=>{
+      const ampliada=document.createElement('dialog');ampliada.className='foto-ampliada';ampliada.setAttribute('aria-label','Fotografía ampliada');
+      const img=crear('img');img.src=fotos[actual];img.alt=principal.alt;ampliada.append(boton('Cerrar fotografía',()=>ampliada.close()),img);
+      ampliada.addEventListener('close',()=>ampliada.remove());document.body.append(ampliada);ampliada.showModal();
+    }));
+    const info=crear('section','detalle-info');info.append(crear('span','producto-marca',producto.marca),crear('h2','',producto.nombre),crear('p','',`Área de entrenamiento: ${producto.area||producto.categoria||'Por completar'}`),crear('p','',`Clasificación: ${producto.clasificacion||producto.categoria||'Por completar'}`));
+    const fichas=crear('div','detalle-fichas');
+    for(const [etiqueta,valor] of [['Descripción del equipo',producto.descripcion],['Características principales',producto.caracteristicas],['Grupo muscular trabajado',producto.grupo_muscular],['Características técnicas',producto.caracteristicas_tecnicas],['Dimensiones',producto.dimensiones],['Peso del equipo',producto.peso_kg==null?null:`${producto.peso_kg} kg`],['Colores disponibles',producto.color],['Materiales',producto.materiales],['Capacidad de carga',producto.capacidad_carga]]){const ficha=crear('article');ficha.append(crear('h3','',etiqueta),crear('p','',valor||'Pendiente de completar'));fichas.append(ficha);}
+    const inventario=crear('div','detalle-inventario');
+    for(const [etiqueta,valor] of [['Precio',producto.precio==null?'Precio a consultar':`${producto.moneda} ${Number(producto.precio).toLocaleString('es-GT',{minimumFractionDigits:2})}`],['Existencias',`${producto.existencias} · ${producto.estado}`]]){const bloque=crear('div');bloque.append(crear('strong','',etiqueta),crear('p','',valor));inventario.append(bloque);}
+    const interes=boton(this.seleccion.has(producto.id)?'✓ Seleccionada':'Me interesa',()=>{this.onSeleccion(producto.id);interes.textContent=this.seleccion.has(producto.id)?'✓ Seleccionada':'Me interesa';});
+    info.append(fichas,inventario,interes);grid.append(galeria,info);dialogo.append(nav,grid);
+    dialogo.addEventListener('close',()=>{dialogo.remove();origen.focus();});document.body.append(dialogo);dialogo.showModal();
+  }
+
 }

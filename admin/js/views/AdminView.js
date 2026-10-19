@@ -1,142 +1,52 @@
-
 export class AdminView {
-  constructor() {
-    this.login = document.querySelector("#login");
-    this.panel = document.querySelector("#administracion");
-    this.formLogin = document.querySelector("#form-login");
-    this.formProducto = document.querySelector("#form-producto");
-    this.lista = document.querySelector("#lista-admin");
-    this.mensaje = document.querySelector("#mensaje");
-    this.titulo = document.querySelector("#titulo-formulario");
-    this.salir = document.querySelector("#cerrar-sesion");
-    this.guardar = document.querySelector("#guardar-producto");
-  }
-
-  mostrarPanel(autorizado) {
-    this.login.hidden = autorizado;
-    this.panel.hidden = !autorizado;
-    this.salir.hidden = !autorizado;
-  }
-
-  notificar(texto, error = false) {
-    this.mensaje.textContent = texto;
-    this.mensaje.className = error ? "error" : "correcto";
-  }
-
-  limpiarFormulario() {
-    this.formProducto.reset();
-    this.formProducto.elements.id.value = "";
-    this.titulo.textContent = "Registrar máquina";
-    this.guardar.textContent = "Guardar máquina";
-  }
-
-  leerFormulario() {
-    const form = this.formProducto;
-    const datos = new FormData(form);
-
-    const texto = nombre =>
-      String(datos.get(nombre) || "").trim();
-
-    const numero = nombre => {
-      const valor = texto(nombre);
-      return valor === "" ? null : Number(valor);
-    };
-
-    const producto = {
-      nombre: texto("nombre"),
-      marca: texto("marca"),
-      modelo: texto("modelo") || null,
-      codigo_interno: texto("codigo_interno") || null,
-      area: texto("area"),
-      categoria: texto("categoria"),
-      descripcion: texto("descripcion") || null,
-      precio: numero("precio"),
-      precio_especial: numero("precio_especial"),
-      moneda: "GTQ",
-      existencias: Number(texto("existencias")),
-      estado: texto("estado"),
-      color: texto("color") || null,
-      peso_kg: numero("peso_kg"),
-      dimensiones: texto("dimensiones") || null,
-      musculos: texto("musculos") || null,
-      imagen_url: texto("imagen_url") || null,
-      preventa: form.elements.preventa.checked,
-      publicado: form.elements.publicado.checked,
-      actualizado_en: new Date().toISOString()
-    };
-
-    const id = texto("id");
-    if (id) producto.id = Number(id);
-
-    return producto;
-  }
-
-  editar(producto) {
-    this.limpiarFormulario();
-
-    for (const [campo, valor] of Object.entries(producto)) {
-      const elemento = this.formProducto.elements.namedItem(campo);
-      if (!elemento) continue;
-
-      if (elemento.type === "checkbox") {
-        elemento.checked = Boolean(valor);
-      } else {
-        elemento.value = valor ?? "";
-      }
-    }
-
-    this.titulo.textContent = "Editar máquina";
-    this.guardar.textContent = "Guardar cambios";
-
-    this.formProducto.scrollIntoView({
-      behavior: "smooth",
-      block: "start"
-    });
-  }
-
-  mostrarProductos(productos, editar, eliminar) {
-    this.lista.replaceChildren();
-
-    if (productos.length === 0) {
-      const aviso = document.createElement("p");
-      aviso.textContent = "No hay máquinas registradas.";
-      this.lista.append(aviso);
-      return;
-    }
-
-    productos.forEach(producto => {
-      const fila = document.createElement("article");
-      fila.className = "fila-producto";
-
-      const datos = document.createElement("div");
-
-      const nombre = document.createElement("strong");
-      nombre.textContent = producto.nombre;
-
-      const detalle = document.createElement("p");
-      detalle.textContent =
-        `${producto.marca} · ${producto.area || "Sin área"} · ` +
-        `${producto.categoria} · ` +
-        `${producto.publicado ? "Publicado" : "Borrador"}`;
-
-      datos.append(nombre, detalle);
-
-      const acciones = document.createElement("div");
-      acciones.className = "acciones";
-
-      const botonEditar = document.createElement("button");
-      botonEditar.textContent = "Editar";
-      botonEditar.className = "secundario";
-      botonEditar.addEventListener("click", () => editar(producto));
-
-      const botonEliminar = document.createElement("button");
-      botonEliminar.textContent = "Eliminar";
-      botonEliminar.className = "peligro";
-      botonEliminar.addEventListener("click", () => eliminar(producto));
-
-      acciones.append(botonEditar, botonEliminar);
-      fila.append(datos, acciones);
-      this.lista.append(fila);
-    });
-  }
+ constructor(){this.login=document.querySelector('#login');this.panel=document.querySelector('#administracion');this.formLogin=document.querySelector('#form-login');this.formProducto=document.querySelector('#form-producto');this.lista=document.querySelector('#lista-admin');this.mensaje=document.querySelector('#mensaje');this.titulo=document.querySelector('#titulo-formulario');this.salir=document.querySelector('#cerrar-sesion');this.guardar=document.querySelector('#guardar-producto');this.previa=document.querySelector('#vista-previa');this.previewUrl=null;this.imagenActual=null;}
+ mostrarPanel(ok){this.login.hidden=ok;this.panel.hidden=!ok;this.salir.hidden=!ok;if(ok)this.mostrarSeccion('dashboard');else this.resumirSolicitudes(null);}
+ mostrarSeccion(nombre){
+   for(const seccion of ['dashboard','catalogo']){
+     document.querySelector(`#seccion-${seccion}`).hidden=seccion!==nombre;
+     const boton=document.querySelector(`#nav-${seccion}`);
+     if(seccion===nombre)boton.setAttribute('aria-current','page');else boton.removeAttribute('aria-current');
+   }
+ }
+ resumirSolicitudes(solicitudes){
+   const valores={'total-solicitudes':solicitudes?.length,'solicitudes-pendientes':solicitudes?.filter(s=>s.estado==='pendiente').length,'solicitudes-contactadas':solicitudes?.filter(s=>s.estado==='contactado').length,'solicitudes-finalizadas':solicitudes?.filter(s=>s.estado==='finalizado').length};
+   for(const [id,valor] of Object.entries(valores))document.querySelector(`#${id}`).textContent=valor??'—';
+ }
+ notificar(t,error=false){this.mensaje.textContent=t;this.mensaje.className=error?'error':'correcto';}
+ mostrarImagen() { this.previa.hidden=true; }
+ limpiarFormulario(){
+   for(const foto of this.fotos||[])if(foto.archivo)URL.revokeObjectURL(foto.url);
+   document.querySelector('#cancelar-edicion').hidden=true;
+   this.fotos=[];this.formProducto.reset();this.formProducto.elements.id.value='';this.mostrarImagen();this.renderizarFotos();this.titulo.textContent='Registrar máquina';this.guardar.textContent='Guardar máquina';
+ }
+ previsualizarArchivo(){
+   this.fotos ||= [];
+   for(const archivo of this.formProducto.elements.imagen.files)this.fotos.push({archivo,url:URL.createObjectURL(archivo)});
+   this.formProducto.elements.imagen.value='';this.renderizarFotos();
+ }
+ renderizarFotos(){
+   const galeria=document.querySelector('#galeria-admin');galeria.replaceChildren();
+   (this.fotos||[]).forEach((foto,index)=>{
+     const caja=document.createElement('div');const img=document.createElement('img');img.src=foto.url;img.alt=`Fotografía ${index+1}`;
+     const portada=document.createElement(index===0?'span':'button');if(index!==0)portada.type='button';portada.textContent=index===0?'Portada':'Usar de portada';
+     portada.onclick=()=>{this.fotos.splice(index,1);this.fotos.unshift(foto);this.renderizarFotos();};
+     const quitar=document.createElement('button');quitar.type='button';quitar.className='secundario';quitar.textContent='Quitar';quitar.onclick=()=>{if(foto.archivo)URL.revokeObjectURL(foto.url);this.fotos.splice(index,1);this.renderizarFotos();};
+     caja.append(img,portada,quitar);galeria.append(caja);
+   });
+ }
+ leerFormulario(){
+   const f=this.formProducto;const valor=n=>String(f.elements.namedItem(n).value||'').trim();
+   const datos={id:valor('id')?Number(valor('id')):null,existencias:Number(valor('existencias')),precio:Number(valor('precio')),oferta:f.elements.oferta.checked,fotos:[...(this.fotos||[])]};
+   for(const n of ['nombre','marca','descripcion','estado','categoria','area','clasificacion','caracteristicas','grupo_muscular','caracteristicas_tecnicas','dimensiones','color','materiales','capacidad_carga'])datos[n]=valor(n)||null;
+   datos.peso_kg=valor('peso_kg')?Number(valor('peso_kg')):null;return datos;
+ }
+ editar(p){
+   this.limpiarFormulario();for(const n of ['id','nombre','marca','descripcion','existencias','estado','precio','categoria','area','clasificacion','caracteristicas','grupo_muscular','caracteristicas_tecnicas','dimensiones','peso_kg','color','materiales','capacidad_carga'])this.formProducto.elements[n].value=p[n]??'';
+   this.formProducto.elements.oferta.checked=Boolean(p.oferta);
+   this.fotos=[...new Set([p.imagen_url,...(Array.isArray(p.imagenes)?p.imagenes:[])].filter(u=>typeof u==='string'&&u))].map(url=>({url}));this.renderizarFotos();
+   document.querySelector('#cancelar-edicion').hidden=false;
+   this.titulo.textContent='Editar máquina';this.guardar.textContent='Guardar cambios';this.formProducto.scrollIntoView({behavior:'smooth'});
+ }
+ mostrarProductos(productos,editar,eliminar){this.lista.replaceChildren();if(!productos.length){this.lista.textContent='No hay máquinas registradas.';return;}for(const p of productos){const fila=document.createElement('article');fila.className='fila-producto';const d=document.createElement('div');const nombre=document.createElement('strong');nombre.textContent=p.nombre;const info=document.createElement('p');info.textContent=`${p.marca} · ${p.existencias} unidades · ${p.estado} · ${p.oferta?'En oferta':'Precio regular'}`;d.append(nombre,info);const botones=document.createElement('div');botones.className='acciones';for(const [t,cb,cl] of [['Editar',editar,'secundario'],['Eliminar',eliminar,'peligro']]){const b=document.createElement('button');b.type='button';b.className=cl;b.textContent=t;b.addEventListener('click',()=>cb(p));botones.append(b);}fila.append(d,botones);this.lista.append(fila);}}
+ mostrarSolicitudes(solicitudes,actualizar){this.resumirSolicitudes(solicitudes);const lista=document.querySelector('#lista-solicitudes');lista.replaceChildren();if(!solicitudes.length){lista.textContent='Todavía no hay solicitudes.';return;}for(const s of solicitudes){const art=document.createElement('article');art.className='solicitud';const titulo=document.createElement('h3');titulo.textContent=s.nombre;const fecha=document.createElement('p');fecha.textContent=new Date(s.creado_en).toLocaleString('es-GT');const detalle=document.createElement('p');detalle.textContent=`Teléfono: ${s.telefono} · Correo: ${s.correo}`;const maquinas=document.createElement('p');maquinas.textContent='Máquinas: '+(s.solicitud_productos||[]).map(x=>x.nombre_producto).join(', ');const mensaje=document.createElement('p');mensaje.textContent=s.mensaje||'Sin mensaje adicional';const enlaces=document.createElement('div');enlaces.className='acciones';const email=document.createElement('a');email.textContent='Enviar correo';email.href=`mailto:${encodeURIComponent(s.correo)}`;email.className='enlace-admin';enlaces.append(email);const telefono=s.telefono.replace(/\D/g,'');if(telefono.length>=8){const wa=document.createElement('a');wa.href=`https://wa.me/${telefono}`;wa.target='_blank';wa.rel='noopener noreferrer';wa.textContent='WhatsApp';wa.className='enlace-admin';enlaces.append(wa);}const label=document.createElement('label');label.textContent='Seguimiento: ';const sel=document.createElement('select');for(const estado of ['pendiente','contactado','finalizado']){const opt=document.createElement('option');opt.value=estado;opt.textContent=estado;sel.append(opt);}sel.value=s.estado;sel.addEventListener('change',()=>actualizar(s,sel.value).catch(()=>{sel.value=s.estado;}));label.append(sel);art.append(titulo,fecha,detalle,maquinas,mensaje,enlaces,label);lista.append(art);}}
 }
