@@ -2,3 +2,14 @@ datos_privados/
 .env
 .env.*
 .git/
+backups/
+respaldos/
+**/.env
+**/.env.*
+**/*.pem
+**/*.key
+**/*.p12
+**/*.pfx
+**/*.dump
+**/*.backup
+**/*.sql.gz

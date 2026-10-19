@@ -1,5 +1,5 @@
-import { moneda, precioProducto, disponibilidadProducto } from '../utils/comercial.js?v=16';
-import { contactoConfig } from '../config/contacto.js?v=16';
+import { moneda, precioProducto, disponibilidadProducto } from '../utils/comercial.js?v=18';
+import { contactoConfig } from '../config/contacto.js?v=18';
 
 export class CatalogoView {
   constructor({soloLectura=false}={}){

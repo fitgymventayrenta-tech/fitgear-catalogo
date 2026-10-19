@@ -1,5 +1,5 @@
 
-import { supabaseConfig } from "../../../js/config/supabase.js?v=15";
+import { supabaseConfig } from "../../../js/config/supabase.js?v=18";
 
 export class AdminModel {
   constructor() {
@@ -44,6 +44,7 @@ export class AdminModel {
       ...opciones.headers
     };
 
+    if(!ruta.startsWith('/')||ruta.startsWith('//')||ruta.includes(String.fromCharCode(92))||/[\r\n]/.test(ruta)||ruta.split('?')[0].split('/').includes('..'))throw new Error('Ruta de solicitud inválida.');
     const urlCompleta = `${this.url}${ruta}`;
 
     const respuesta = await fetch(urlCompleta, {
@@ -81,7 +82,8 @@ export class AdminModel {
   }
 
   async iniciarSesion(email, password) {
-    const datos = await this.solicitar(
+    let datos;
+    try{datos = await this.solicitar(
       "/auth/v1/token?grant_type=password",
       {
         method: "POST",
@@ -93,6 +95,7 @@ export class AdminModel {
       false
     );
 
+    }catch(error){throw new Error(error.respuestaHttp===429?'Demasiados intentos. Espera antes de volver a iniciar sesión.':'No se pudo iniciar sesión. Revisa tus credenciales o inténtalo más tarde.');}
     if (!datos.access_token) {
       throw new Error(
         "Supabase no devolvió un token de acceso."
@@ -117,6 +120,9 @@ export class AdminModel {
       throw error;
     }
 
+    clearTimeout(this.temporizadorSesion);
+    this.temporizadorSesion=setTimeout(()=>this.cerrarSesion(),Math.max(0,this.expira-Date.now()));
+    this.temporizadorSesion.unref?.();
     return true;
   }
 
@@ -257,6 +263,7 @@ export class AdminModel {
     const prefijo=`${this.url}/storage/v1/object/public/maquinas/`;
     if(!url.startsWith(prefijo))return;
     const ruta=url.slice(prefijo.length);
+    if(!/^[a-zA-Z0-9_-]+\.(jpg|jpeg|png|webp|gif|avif)$/.test(ruta))throw new Error('Ruta de imagen inválida.');
     const respuesta=await fetch(`${this.url}/storage/v1/object/maquinas/${ruta}`,{method:'DELETE',headers:{apikey:this.key,Authorization:`Bearer ${this.token}`}});
     if(!respuesta.ok)throw new Error('No se pudo eliminar la imagen sin utilizar.');
   }
@@ -317,8 +324,15 @@ export class AdminModel {
     if(!filas?.length)throw new Error('No se pudo actualizar la entrega.');
   }
 
+  async cerrarSesionRemota(){
+    const token=this.token;this.cerrarSesion();
+    if(!token)return;
+    const respuesta=await fetch(`${this.url}/auth/v1/logout?scope=local`,{method:'POST',headers:{apikey:this.key,Authorization:`Bearer ${token}`}});
+    if(!respuesta.ok&&respuesta.status!==401)throw new Error('Sesión local cerrada. No se pudo confirmar la revocación remota; vuelve a intentarlo desde Supabase si es necesario.');
+  }
   cerrarSesion() {
-    this.token = null;
-    this.expira = 0;
+    const activa=Boolean(this.token);clearTimeout(this.temporizadorSesion);
+    this.token = null;this.expira = 0;
+    if(activa)this.onSesionCerrada?.();
   }
 }

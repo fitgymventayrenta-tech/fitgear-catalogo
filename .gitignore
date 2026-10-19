@@ -5,3 +5,22 @@
 .DS_Store
 /dist/
 /.vercel/
+# Secretos, respaldos y artefactos de auditoría locales
+**/.env
+**/.env.*
+!**/.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.pgpass
+*.dump
+*.backup
+*.sql.gz
+/backups/
+/respaldos/
+/node_modules/
+/coverage/
+/test-results/
+/playwright-report/
+*.log

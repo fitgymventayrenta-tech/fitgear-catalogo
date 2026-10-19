@@ -1,4 +1,4 @@
-import { ESTADOS_COMERCIALES, metricasComerciales, moneda, fecha, telefonoNormalizado, precioProducto } from "../../../js/utils/comercial.js?v=15";
+import { ESTADOS_COMERCIALES, metricasComerciales, moneda, fecha, telefonoNormalizado, precioProducto } from "../../../js/utils/comercial.js?v=18";
 export class AdminView {
  constructor(){this.login=document.querySelector('#login');this.panel=document.querySelector('#administracion');this.formLogin=document.querySelector('#form-login');this.formProducto=document.querySelector('#form-producto');this.lista=document.querySelector('#lista-admin');this.mensaje=document.querySelector('#mensaje');this.titulo=document.querySelector('#titulo-formulario');this.salir=document.querySelector('#cerrar-sesion');this.guardar=document.querySelector('#guardar-producto');this.previa=document.querySelector('#vista-previa');this.previewUrl=null;this.imagenActual=null;}
  mostrarPanel(ok){this.login.hidden=ok;this.panel.hidden=!ok;this.salir.hidden=!ok;if(ok)this.mostrarSeccion('dashboard');else this.resumirSolicitudes(null);}

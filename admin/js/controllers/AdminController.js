@@ -55,19 +55,24 @@ export class AdminController {
       catch (error) { this.vista.notificar(error.message, true); }
       finally { document.querySelector('#actualizar-solicitudes').disabled = false; }
     });
-    this.vista.salir.addEventListener('click', () => {
-      if (this.guardando) return;
-      this.modelo.cerrarSesion();
-      this.vista.comercial=null;
-      document.querySelectorAll('[data-comercial-dialogo]').forEach(d=>d.remove());
-      for(const id of ['lista-clientes','lista-oportunidades','lista-seguimientos','lista-cotizaciones','lista-ventas'])document.querySelector('#'+id).replaceChildren();
-      this.productos = [];
-      this.vista.lista.replaceChildren();
-      document.querySelector('#lista-solicitudes').replaceChildren();
-      this.vista.limpiarFormulario();
-      this.vista.mostrarPanel(false);
-      this.vista.notificar('Sesión cerrada.');
+    this.modelo.onSesionCerrada=()=>this.limpiarAcceso();
+    this.vista.salir.addEventListener('click', async () => {
+      if(this.guardando)return;
+      try{await this.modelo.cerrarSesionRemota();this.vista.notificar('Sesión cerrada.');}
+      catch(error){this.vista.notificar(error.message,true);}
     });
+  }
+
+  limpiarAcceso(){
+    this.vista.comercial=null;this.vista.productos=[];this.productos=[];
+    document.querySelectorAll('[data-comercial-dialogo]').forEach(d=>d.remove());
+    for(const id of ['lista-clientes','lista-oportunidades','lista-seguimientos','lista-cotizaciones','lista-ventas','lista-solicitudes'])document.querySelector('#'+id).replaceChildren();
+    this.vista.lista.replaceChildren();this.vista.limpiarFormulario();
+    this.vista.vistaCatalogo='inventario';this.vista.actualizarVistaCatalogo();
+    // Quitar el documento del iframe elimina también sus datos y galerías privadas.
+    const frame=document.querySelector('#vista-cliente-catalogo');frame.replaceWith(frame.cloneNode(false));
+    this.vista.formLogin.reset();this.vista.mostrarPanel(false);
+    this.vista.notificar('Sesión cerrada o expirada. Inicia sesión para continuar.');
   }
 
   async iniciarSesion(e) {
@@ -80,6 +85,7 @@ export class AdminController {
       this.vista.formLogin.reset();
       this.vista.mostrarPanel(true);
       const resultados = await Promise.allSettled([this.cargarProductos(), this.cargarSolicitudes()]);
+      if(!this.modelo.token)return;
       const errores = resultados.filter(r => r.status === 'rejected');
       this.vista.notificar(errores.length ? errores.map(r => r.reason.message).join(' ') : 'Sesión ADMIN iniciada.', errores.length > 0);
     } catch (error) {
@@ -152,7 +158,9 @@ export class AdminController {
   }
 
   async cargarProductos() {
-    this.productos = await this.modelo.obtenerProductos();
+    const token=this.modelo.token,productos=await this.modelo.obtenerProductos();
+    if(!token||token!==this.modelo.token)return;
+    this.productos=productos;
     this.vista.mostrarProductos(this.productos, p => this.vista.editar(p), p => this.eliminarProducto(p));
   }
 
@@ -168,9 +176,13 @@ export class AdminController {
   }
 
   async cargarSolicitudes() {
+    const token=this.modelo.token;
     try {
-      this.vista.mostrarComercial(await this.modelo.obtenerComercial());
+      const datos=await this.modelo.obtenerComercial();
+      if(!token||token!==this.modelo.token)return;
+      this.vista.mostrarComercial(datos);
     } catch (error) {
+      if(!token||token!==this.modelo.token)return;
       this.vista.resumirSolicitudes(null);
       for(const id of ['lista-clientes','lista-solicitudes','lista-oportunidades','lista-seguimientos','lista-cotizaciones','lista-ventas'])document.querySelector('#'+id).textContent='No fue posible cargar el módulo comercial. Aplica migracion_modulo_clientes.sql en Supabase y pulsa «Actualizar datos».';
       throw error;

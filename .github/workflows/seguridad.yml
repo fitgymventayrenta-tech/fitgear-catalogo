@@ -1,0 +1,54 @@
+name: Seguridad y pruebas FitGear
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+concurrency:
+  group: seguridad-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  comprobar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: fitgear_ci_temporal
+          POSTGRES_DB: fitgear_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24'
+      - name: Secretos, historial, sintaxis y sumideros inseguros
+        run: node scripts/check-security.mjs --history
+      - name: Pruebas unitarias y seguridad
+        run: node --test tests/fitgear.test.mjs tests/seguridad.test.mjs
+      - name: Compilar ambos sitios sin datos privados
+        run: |
+          node scripts/build-static.mjs catalogo
+          node scripts/build-static.mjs admin
+      - name: Probar SQL y RLS en PostgreSQL aislado
+        env:
+          PGPASSWORD: fitgear_ci_temporal
+        run: psql -h 127.0.0.1 -U postgres -d fitgear_test -v ON_ERROR_STOP=1 -f tests/seguridad.setup.sql
+      - name: Regresión CRM con autorización por membresía
+        env:
+          FITGEAR_TEST_DATABASE: '1'
+          PGHOST: 127.0.0.1
+          PGUSER: postgres
+          PGDATABASE: fitgear_test
+          PGPASSWORD: fitgear_ci_temporal
+        run: node scripts/test-crm-auth.mjs
