@@ -1,6 +1,6 @@
-import { validarPreciosProducto } from "../../js/comercial.js?v=22";
+import { validarPreciosProducto } from "../../js/comercial.js?v=23";
 
-import { supabaseConfig } from "../../js/supabase.js?v=22";
+import { supabaseConfig } from "../../js/supabase.js?v=23";
 
 export class AdminModel {
   constructor() {

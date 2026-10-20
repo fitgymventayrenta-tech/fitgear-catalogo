@@ -1,7 +1,7 @@
 
-import { AdminModel } from "./AdminModel.js?v=22";
-import { AdminView } from "./AdminView.js?v=22";
-import { AdminController } from "./AdminController.js?v=22";
+import { AdminModel } from "./AdminModel.js?v=23";
+import { AdminView } from "./AdminView.js?v=23";
+import { AdminController } from "./AdminController.js?v=23";
 
 const modelo = new AdminModel();
 const vista = new AdminView();
