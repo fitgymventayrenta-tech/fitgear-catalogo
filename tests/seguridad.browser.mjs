@@ -22,7 +22,7 @@ await ctx.route('https://*.supabase.co/**',async route=>{
  else if(u.pathname.startsWith('/auth/v1/logout')){await route.fulfill({status:204});return;}
  else{const tabla=u.pathname.split('/').pop();assert.ok(tabla in datos,tabla);if(tabla==='clientes'&&esperarClientes){esperarClientes=false;await new Promise(resolve=>resolverClientes=resolve);}if(req.method()==='PATCH'){
    const body=req.postDataJSON();if(tabla==='clientes'){assert.deepEqual(Object.keys(body),['observaciones']);Object.assign(datos.clientes[0],body);r=[datos.clientes[0]];}
-   else if(tabla==='solicitudes'){assert.deepEqual(Object.keys(body),['estado']);Object.assign(datos.solicitudes[0],body);r=[datos.solicitudes[0]];}else throw Error('PATCH inesperado');
+   else if(tabla==='solicitudes'){assert.deepEqual(Object.keys(body),['estado']);Object.assign(datos.solicitudes[0],body);r=[datos.solicitudes[0]];}else if(tabla==='productos'){Object.assign(datos.productos[0],body);r=[datos.productos[0]];}else throw Error('PATCH inesperado');
   }else r=datos[tabla];}
  await route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(r)});
 });
@@ -32,6 +32,12 @@ try{
  const respuesta=await page.goto(sitios[0].url);const cabeceras=respuesta.headers();
  assert.match(cabeceras['content-security-policy'],/script-src 'self'/);assert.equal(cabeceras['x-content-type-options'],'nosniff');assert.equal(cabeceras['x-frame-options'],'SAMEORIGIN');assert.equal(cabeceras['access-control-allow-origin'],undefined);
  await page.locator('.tarjeta-producto').waitFor();assert.equal(await page.locator('.producto-nombre').textContent(),xss);assert.equal(await page.evaluate(()=>globalThis.fitgearXss),undefined);await page.locator('.producto-imagen img').waitFor();await page.waitForFunction(()=>document.querySelector('.producto-imagen img').naturalWidth>0);
+ const preciosVista=await page.evaluate(async()=>{
+  const {CatalogoView}=await import('/js/CatalogoView.js?v=22');const vista=new CatalogoView();
+  const base={precio:1000,precio_especial:900,precio_oferta:800};
+  return [{...base},{...base,oferta:true},{...base,preventa:true},{...base,preventa:true,oferta:true}].map(p=>{const caja=vista.mostrarPrecios(p,'');return {texto:caja.textContent,tachados:caja.querySelectorAll('del').length};});
+ });
+ assert.equal(preciosVista[0].tachados,0);assert.equal(preciosVista[1].tachados,1);assert.equal(preciosVista[2].tachados,0);assert.equal(preciosVista[3].tachados,2);assert.match(preciosVista[3].texto,/Oferta en preventa · Precio vigente/);
  for(const ruta of ['/datos_privados/clientes_libro2.csv','/supabase/migracion_fitgear.sql','/.env','/.git/config','/admin/'])assert.equal((await ctx.request.get(sitios[0].url+ruta)).status(),404);
  console.log('APROBADA: cabeceras locales, sin CORS comodín, XSS mostrado como texto y archivos privados ausentes del catálogo.');
  await page.goto(sitios[1].url);await page.locator('#login').waitFor();assert.equal(await page.locator('#administracion').isVisible(),false);
@@ -59,7 +65,11 @@ try{
   await ficha.getByRole('button',{name:'Cerrar',exact:true}).click();
  }
  console.log('APROBADA: sin Oportunidades, atención independiente, notas editables, venta sin duplicación, recurrencia calculada y ficha responsive.');
- await page.locator('#nav-catalogo').click();await page.locator('[data-vista-catalogo=previa]').click();const frame=page.frameLocator('#vista-cliente-catalogo');await frame.locator('.tarjeta-producto').waitFor();
+ await page.locator('#nav-catalogo').click();await page.locator('#lista-admin').getByRole('button',{name:'Editar',exact:true}).click();
+ const editor=page.locator('#editor-producto');await editor.locator('[name=preventa]').check();await editor.locator('[name=precio_especial]').fill('90');await editor.locator('[name=oferta]').check();await editor.locator('[name=precio_oferta]').fill('80');await page.locator('#guardar-producto').click();await editor.waitFor({state:'hidden'});
+ assert.equal(datos.productos[0].precio,100);assert.equal(datos.productos[0].precio_especial,90);assert.equal(datos.productos[0].precio_oferta,80);assert.equal(datos.productos[0].preventa,true);assert.equal(datos.productos[0].oferta,true);
+ await page.locator('#lista-admin').getByRole('button',{name:'Editar',exact:true}).click();assert.equal(await editor.locator('[name=precio]').inputValue(),'100');assert.equal(await editor.locator('[name=precio_especial]').inputValue(),'90');assert.equal(await editor.locator('[name=precio_oferta]').inputValue(),'80');await page.locator('#cerrar-editor').click();
+ await page.locator('[data-vista-catalogo=previa]').click();const frame=page.frameLocator('#vista-cliente-catalogo');await frame.locator('.tarjeta-producto').waitFor();await frame.getByText('PREVENTA',{exact:true}).waitFor();assert.equal(await frame.locator('.tarjeta-producto del').count(),2);
  await frame.getByRole('button',{name:'Ver fotos y detalles',exact:true}).click();await frame.locator('dialog[open]').waitFor();await frame.getByRole('button',{name:'Cerrar',exact:true}).click();
  assert.deepEqual(await page.evaluate(()=>({local:Object.keys(localStorage),sesion:Object.keys(sessionStorage)})),{local:['fitgear.catalogo.actualizado'],sesion:[]});
  assert.match(await page.evaluate(()=>localStorage.getItem('fitgear.catalogo.actualizado')),/^\d+$/);

@@ -155,3 +155,20 @@ test('guardar atención envía solo estado legado, sin convertir una solicitud e
  await m.actualizarSolicitud(1,{estado:'contactado'});assert.deepEqual(peticiones,[{estado:'contactado'}]);
  }finally{globalThis.fetch=anterior;}
 });
+
+const {preciosProducto,precioProducto,validarPreciosProducto}=await importar('js/comercial.js');
+test('precios separados: normal, preventa y oferta con prioridad explícita',()=>{
+ const p={precio:1000,precio_especial:900,precio_oferta:800,preventa:false,oferta:false};
+ assert.equal(precioProducto(p),1000);
+ p.preventa=true;assert.equal(precioProducto(p),900);
+ p.oferta=true;assert.deepEqual(preciosProducto(p),{normal:1000,preventa:900,oferta:800,vigente:800});
+ p.preventa=false;assert.equal(precioProducto(p),800);assert.equal(p.precio_especial,900);
+ p.precio_oferta=1100;assert.equal(precioProducto(p),1000);
+});
+test('valida oferta inferior a normal y preventa sin aceptar precios inválidos',()=>{
+ const p={precio:1000,precio_especial:900,precio_oferta:800,preventa:true,oferta:true};
+ assert.doesNotThrow(()=>validarPreciosProducto(p));
+ for(const precio_oferta of [1000,950,-1,NaN,Infinity,1.001,null])assert.throws(()=>validarPreciosProducto({...p,precio_oferta}));
+ assert.throws(()=>validarPreciosProducto({...p,precio_especial:null}));
+ assert.doesNotThrow(()=>validarPreciosProducto({precio:null,oferta:false,preventa:false}));
+});

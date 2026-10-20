@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 let codigo=await readFile(new URL('../admin/js/AdminModel.js',import.meta.url),'utf8');
 codigo=codigo.replace(/import \{ supabaseConfig \} from [^;]+;/,'const supabaseConfig={url:"https://test.supabase.co",key:"sb_publishable_test"};');
+const helper=Buffer.from(await readFile(new URL('../js/comercial.js',import.meta.url),'utf8')).toString('base64');
+codigo=codigo.replace(/from "[^"]*comercial\.js(?:\?[^"]*)?"/,`from "data:text/javascript;base64,${helper}"`);
 const {AdminModel}=await import('data:text/javascript;base64,'+Buffer.from(codigo).toString('base64'));
 const respuesta=(datos,status=200)=>new Response(status===204?null:JSON.stringify(datos),{status,headers:{'Content-Type':'application/json'}});
 const sesion=()=>{const m=new AdminModel();m.token='solo-prueba';m.expira=Date.now()+3600000;return m;};

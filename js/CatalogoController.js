@@ -1,5 +1,5 @@
-import { moneda, precioProducto, telefonoNormalizado } from './comercial.js?v=21';
-import { contactoConfig } from './contacto.js?v=21';
+import { moneda, precioProducto, telefonoNormalizado } from './comercial.js?v=22';
+import { contactoConfig } from './contacto.js?v=22';
 export class CatalogoController {
   constructor(modelo,vista){
     this.modelo=modelo;this.vista=vista;this.seleccion=new Map();this.enviando=false;

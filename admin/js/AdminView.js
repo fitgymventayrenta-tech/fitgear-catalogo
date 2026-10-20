@@ -1,4 +1,4 @@
-import { ESTADOS_ATENCION, estadoAtencion, resumenCliente, metricasComerciales, moneda, fecha, telefonoNormalizado, precioProducto } from "../../js/comercial.js?v=21";
+import { ESTADOS_ATENCION, estadoAtencion, resumenCliente, metricasComerciales, moneda, fecha, telefonoNormalizado, precioProducto } from "../../js/comercial.js?v=22";
 export class AdminView {
  constructor(){this.login=document.querySelector('#login');this.panel=document.querySelector('#administracion');this.formLogin=document.querySelector('#form-login');this.formProducto=document.querySelector('#form-producto');this.lista=document.querySelector('#lista-admin');this.mensaje=document.querySelector('#mensaje');this.titulo=document.querySelector('#titulo-formulario');this.salir=document.querySelector('#cerrar-sesion');this.guardar=document.querySelector('#guardar-producto');this.previa=document.querySelector('#vista-previa');this.previewUrl=null;this.imagenActual=null;}
  mostrarPanel(ok){this.login.hidden=ok;this.panel.hidden=!ok;this.salir.hidden=!ok;if(ok)this.mostrarSeccion('dashboard');else this.resumirSolicitudes(null);}
@@ -57,13 +57,13 @@ export class AdminView {
  }
  leerFormulario(){
    const f=this.formProducto;const valor=n=>String(f.elements.namedItem(n).value||'').trim();
-   const datos={id:valor('id')?Number(valor('id')):null,existencias:Number(valor('existencias')),precio:valor('precio')===''?null:Number(valor('precio')),oferta:f.elements.oferta.checked,fotos:[...(this.fotos||[])]};
+   const datos={id:valor('id')?Number(valor('id')):null,existencias:Number(valor('existencias')),precio:valor('precio')===''?null:Number(valor('precio')),oferta:f.elements.oferta.checked,preventa:f.elements.preventa.checked,precio_especial:valor('precio_especial')===''?null:Number(valor('precio_especial')),precio_oferta:valor('precio_oferta')===''?null:Number(valor('precio_oferta')),fotos:[...(this.fotos||[])]};
    for(const n of ['nombre','marca','categoria','descripcion','estado'])datos[n]=valor(n);
    return datos;
  }
  editar(p){
-   this.limpiarFormulario();for(const n of ['id','nombre','marca','categoria','descripcion','existencias','estado','precio'])this.formProducto.elements[n].value=p[n]??'';
-   this.formProducto.elements.precio.value=precioProducto(p)??'';
+   this.limpiarFormulario();for(const n of ['id','nombre','marca','categoria','descripcion','existencias','estado','precio','precio_especial','precio_oferta'])this.formProducto.elements[n].value=p[n]??'';
+   this.formProducto.elements.preventa.checked=Boolean(p.preventa);
    this.formProducto.elements.oferta.checked=Boolean(p.oferta);this.formProducto.elements.precio.required=false;
    this.fotos=[...new Set([p.imagen_url,...(Array.isArray(p.imagenes)?p.imagenes:[])].filter(u=>typeof u==='string'&&u))].map(url=>({url}));this.renderizarFotos();
    document.querySelector('#cancelar-edicion').hidden=false;
@@ -80,7 +80,7 @@ export class AdminView {
     this.lista.replaceChildren();if(!productos.length){this.lista.textContent='No hay máquinas registradas.';return;}
     for(const p of productos){
       const fila=this.elemento('article','fila-producto tarjeta-inventario'),info=this.elemento('div','informacion-registro');
-      info.append(this.elemento('strong','nombre-registro',p.nombre),this.elemento('p','marca-registro',p.marca),this.metadatos([['Publicación',p.publicado?'Publicada':'Sin publicar'],['Existencias',`${p.existencias} unidades`],['Precio',p.precio==null?'A consultar':'Q '+Number(p.precio).toLocaleString('es-GT',{minimumFractionDigits:2})],['Estado',({disponible:'Disponible',reservada:'Reservada',vendida:'Sin existencias'})[p.estado]||p.estado],['Oferta',p.oferta?'En oferta':'Precio regular']],'datos-registro'));
+      info.append(this.elemento('strong','nombre-registro',p.nombre),this.elemento('p','marca-registro',p.marca),this.metadatos([['Publicación',p.publicado?'Publicada':'Sin publicar'],['Existencias',`${p.existencias} unidades`],['Precio normal',p.precio==null?'A consultar':moneda(p.precio)],['Precio vigente',precioProducto(p)==null?'A consultar':moneda(precioProducto(p))],['Preventa',p.preventa?'Activa':'No'],['Estado',({disponible:'Disponible',reservada:'Reservada',vendida:'Sin existencias'})[p.estado]||p.estado],['Oferta',p.oferta?'En oferta':'Precio regular']],'datos-registro'));
       const acciones=this.elemento('div','acciones');for(const [texto,cb,clase] of [['Editar',editar,'secundario'],['Eliminar',eliminar,'peligro']])acciones.append(this.boton(texto,()=>cb(p),clase));
       const foto=p.imagen_url||(Array.isArray(p.imagenes)?p.imagenes[0]:'');if(foto){const img=this.elemento('img','inventario-foto');img.src=foto;img.alt=p.nombre;img.loading='lazy';img.onerror=()=>img.remove();fila.append(img);}
       fila.append(info,acciones);this.lista.append(fila);

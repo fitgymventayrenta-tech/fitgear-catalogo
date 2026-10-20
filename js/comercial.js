@@ -56,14 +56,25 @@ export function textoBusquedaProducto(p) {
   for(const grupo of grupos)if(grupo.some(alias=>original.includes(' '+alias+' ')))texto+=' '+grupo.join(' ');
   return texto;
 }
-export function precioProducto(p) {
-  // El precio especial solo corresponde a preventa cuando existe y es válido.
-  const especial=p.precio_especial;
-  const bruto=p.preventa&&especial!==null&&especial!==undefined&&especial!==''&&Number.isFinite(Number(especial))&&Number(especial)>=0?especial:p.precio;
-  return bruto!==null&&bruto!==undefined&&bruto!==''&&Number.isFinite(Number(bruto))&&Number(bruto)>=0?Number(bruto):null;
+const precioValido = valor => valor!==null&&valor!==undefined&&valor!==''&&Number.isFinite(Number(valor))&&Number(valor)>=0?Number(valor):null;
+export function preciosProducto(p){
+  const normal=precioValido(p.precio),preventa=p.preventa?precioValido(p.precio_especial):null;
+  const rebaja=precioValido(p.precio_oferta);
+  const oferta=p.oferta&&normal!==null&&rebaja!==null&&rebaja<normal&&(!p.preventa||(preventa!==null&&rebaja<preventa))?rebaja:null;
+  return {normal,preventa,oferta,vigente:oferta??(p.preventa?preventa:normal)};
+}
+export function precioProducto(p) { return preciosProducto(p).vigente; }
+export function validarPreciosProducto(p){
+  for(const campo of ['precio','precio_especial','precio_oferta']){
+    const valor=p[campo];
+    if(valor!=null&&(typeof valor!=='number'||!Number.isFinite(valor)||valor<0||valor>9999999999||Math.abs(valor*100-Math.round(valor*100))>0.0001))throw new Error('Los precios deben ser importes válidos con hasta dos decimales.');
+  }
+  if(p.preventa&&p.precio_especial==null)throw new Error('Indica el precio de preventa.');
+  if(p.oferta&&(p.precio==null||p.precio_oferta==null||p.precio_oferta>=p.precio))throw new Error('El precio de oferta debe ser inferior al precio normal.');
+  if(p.oferta&&p.preventa&&p.precio_oferta>=p.precio_especial)throw new Error('La oferta también debe ser inferior al precio de preventa.');
 }
 export function disponibilidadProducto(p) {
-  if(p.preventa)return {clave:'preventa',texto:'En preventa',detalle:'Consulta plazo de entrega y condiciones de reserva.'};
+  if(p.preventa)return {clave:'preventa',texto:'PREVENTA',detalle:'Consulta plazo de entrega y condiciones de reserva.'};
   if(Number(p.existencias)>0&&p.estado==='disponible')return {clave:'disponible',texto:'Disponible',detalle:`${p.existencias} ${Number(p.existencias)===1?'unidad disponible':'unidades disponibles'}`};
   if(Number(p.existencias)>0&&p.estado==='reservada')return {clave:'reservada',texto:'Reservada',detalle:'Consulta la próxima disponibilidad o equipos similares.'};
   return {clave:'vendida',texto:'Sin existencias',detalle:'Consulta opciones de reposición o equipos similares.'};

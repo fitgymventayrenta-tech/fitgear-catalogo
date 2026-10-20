@@ -1,5 +1,6 @@
+import { validarPreciosProducto } from "../../js/comercial.js?v=22";
 
-import { supabaseConfig } from "../../js/supabase.js?v=21";
+import { supabaseConfig } from "../../js/supabase.js?v=22";
 
 export class AdminModel {
   constructor() {
@@ -186,8 +187,8 @@ export class AdminModel {
   }
 
   confirmarGuardado(registro,datos){
-    const numeros=['precio','precio_especial','existencias'];
-    for(const campo of ['nombre','marca','categoria','descripcion','precio','precio_especial','existencias','estado','oferta','publicado','imagen_url','imagenes']){
+    const numeros=['precio','precio_especial','precio_oferta','existencias'];
+    for(const campo of ['nombre','marca','categoria','descripcion','precio','precio_especial','precio_oferta','existencias','estado','preventa','oferta','publicado','imagen_url','imagenes']){
       if(!(campo in datos))continue;
       let esperado=datos[campo],actual=registro[campo];
       if(numeros.includes(campo)){esperado=esperado==null?null:Number(esperado);actual=actual==null?null:Number(actual);}
@@ -215,6 +216,7 @@ export class AdminModel {
   }
 
   validarProducto(producto) {
+    validarPreciosProducto(producto);
     if (!producto.nombre?.trim() || producto.nombre.length > 160 ||
         !producto.marca?.trim() || producto.marca.length > 100 ||
         typeof producto.descripcion !== 'string' || producto.descripcion.length > 5000 ||

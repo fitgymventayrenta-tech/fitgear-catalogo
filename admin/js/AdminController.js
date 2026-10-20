@@ -105,8 +105,6 @@ export class AdminController {
       datos.publicado = e.submitter?.value !== 'borrador';
       this.modelo.validarProducto(datos);
       datos.moneda = 'GTQ';
-      const anterior=this.productos.find(p=>String(p.id)===String(datos.id));
-      if(anterior?.preventa)datos.precio_especial=datos.precio;
       this.guardando = true;
       // Impide alterar fotos o cambiar de máquina durante una subida.
       const controles = [...this.vista.panel.querySelectorAll('button,input,select,textarea')];

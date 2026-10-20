@@ -76,3 +76,11 @@ Antes de aplicar la migración de auditoría, leer [el informe de seguridad](AUD
 No guardar contraseñas, datos de clientes ni claves `service_role` en el código ni en las salidas publicadas. La configuración del navegador utiliza una clave pública y necesita RLS correctamente aplicada.
 
 La reorganización aplanó las carpetas sin fusionar la lógica de los módulos. Se conservaron las pruebas, la seguridad y la separación de los dos sitios. Los archivos fuente anteriores se guardaron en un ZIP externo al proyecto antes de moverlos.
+
+## Precios, ofertas y preventa
+
+Antes de publicar esta versión, ejecutar completo `supabase/migracion_precios_catalogo.sql` en el SQL Editor de Supabase. Agrega `precio_oferta` y valida los precios sin reemplazar los registros existentes. No se aplicó a producción automáticamente.
+
+El editor conserva el precio normal (`precio`), el de preventa (`precio_especial`) y el de oferta por separado. Los interruptores de preventa y oferta son independientes y desactivarlos conserva sus importes. Con ambas condiciones activas, la oferta es el precio vigente y debe ser inferior al normal y al de preventa. Ese precio también se utiliza para filtros, orden y cotizaciones nuevas; las cotizaciones y ventas anteriores conservan sus importes.
+
+Las fichas antiguas marcadas en oferta sin un precio rebajado válido muestran su precio normal o de preventa hasta completarlas; al editarlas, se debe indicar el precio de oferta o desactivar la condición. No se inventan descuentos ni se modifican precios históricos.

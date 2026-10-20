@@ -74,3 +74,8 @@ button,.boton{overflow-wrap:anywhere}
 .contacto .opciones-pago li{border:1px solid #ffffff40;border-radius:8px;padding:9px 12px;color:#edf4f1;font-size:14px;overflow-wrap:anywhere}
 .opciones-pago p{margin:12px 0 0}
 @media(max-width:359px){.opciones-pago ul{display:grid;grid-template-columns:1fr}}
+
+.precios-equipo .precio-linea{margin:.35rem 0;overflow-wrap:anywhere;line-height:1.5}
+.precios-equipo .precio-etiqueta{font-size:.85rem;font-weight:500}
+.precios-equipo del{color:var(--texto-secundario,#586b67);font-size:1rem;font-weight:400}
+.precios-equipo .precio-linea:last-child strong{color:#155d57}

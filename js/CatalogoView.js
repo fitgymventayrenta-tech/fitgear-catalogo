@@ -1,5 +1,5 @@
-import { moneda, precioProducto, disponibilidadProducto } from './comercial.js?v=21';
-import { contactoConfig } from './contacto.js?v=21';
+import { moneda, preciosProducto, disponibilidadProducto } from './comercial.js?v=22';
+import { contactoConfig } from './contacto.js?v=22';
 
 export class CatalogoView {
   constructor({soloLectura=false}={}){
@@ -53,6 +53,14 @@ export class CatalogoView {
     else caja.append(this.crear('span','imagen-vacia','Consulta fotografías del equipo'));
     return caja;
   }
+  mostrarPrecios(p,clase){
+    const precios=preciosProducto(p),caja=this.crear('div','precios-equipo '+clase);
+    const fila=(nombre,valor,tachado=false)=>{const linea=this.crear('p','precio-linea');linea.append(this.crear('span','precio-etiqueta',nombre+' '),this.crear(tachado?'del':'strong','',valor===null?'Precio a consultar':moneda(valor)));caja.append(linea);};
+    if(precios.oferta!==null){fila('Precio normal:',precios.normal,true);if(p.preventa)fila('Precio de preventa:',precios.preventa,true);fila(p.preventa?'Oferta en preventa · Precio vigente:':'Precio de oferta:',precios.oferta);}
+    else if(p.preventa){if(precios.normal!==null)fila('Precio normal:',precios.normal);fila('Precio de preventa · Precio vigente:',precios.preventa);}
+    else fila('Precio:',precios.normal);
+    return caja;
+  }
   crearTarjeta(p){
     const tarjeta=this.crear('article','tarjeta-producto');const abrir=()=>this.mostrarDetalle(p,tarjeta.querySelector('.producto-nombre'));
     const imagen=this.boton('','producto-imagen',abrir);imagen.setAttribute('aria-label',`Ver detalles y fotos de ${p.nombre}`);imagen.append(this.imagen(p.imagen||p.imagenes?.[0],p.nombre,'imagen-interior'),this.crear('span','foto-indicacion','Ver fotos y detalles'));
@@ -61,9 +69,9 @@ export class CatalogoView {
     const categoria=[p.area||p.categoria,p.modelo].filter(Boolean).join(' · ');if(categoria)encabezado.append(this.crear('p','producto-categoria',categoria));
     contenido.append(encabezado);
     const etiquetas=this.crear('div','producto-etiquetas');const estado=disponibilidadProducto(p);
-    etiquetas.append(this.crear('span','estado-equipo estado-'+estado.clave,estado.texto));if(p.oferta)etiquetas.append(this.crear('span','insignia-oferta','En oferta'));contenido.append(etiquetas);
+    etiquetas.append(this.crear('span','estado-equipo estado-'+estado.clave,estado.texto));if(preciosProducto(p).oferta!==null)etiquetas.append(this.crear('span','insignia-oferta','En oferta'));contenido.append(etiquetas);
     if(p.descripcion)contenido.append(this.crear('p','producto-descripcion',p.descripcion));
-    const precio=precioProducto(p);contenido.append(this.crear('p','producto-precio',precio===null?'Precio a consultar':moneda(precio)),this.crear('p','producto-disponibilidad',estado.detalle));
+    contenido.append(this.mostrarPrecios(p,'producto-precio'),this.crear('p','producto-disponibilidad',estado.detalle));
     const acciones=this.crear('div','producto-acciones');const seleccionado=this.seleccion.has(p.id);
     acciones.append(this.boton('Solicitar información','boton boton-principal',()=>this.onSolicitud(p)));
     const agregar=this.boton(seleccionado?'✓ En mi cotización':'Agregar a cotización','boton boton-contorno',()=>{this.onSeleccion(p.id);});agregar.setAttribute('aria-pressed',String(seleccionado));acciones.append(agregar);contenido.append(acciones);
@@ -83,10 +91,10 @@ export class CatalogoView {
       const a=this.crear('dialog','foto-ampliada');a.setAttribute('aria-label',`Fotografía ampliada de ${p.nombre}`);const cerrarFoto=this.boton('Cerrar fotografía','boton boton-neutral',()=>a.close());
       a.append(cerrarFoto,this.imagen(fotos[actual],p.nombre,'imagen-ampliada'));a.onclose=()=>a.remove();document.body.append(a);a.showModal();
     }));
-    const estado=disponibilidadProducto(p),precio=precioProducto(p);
+    const estado=disponibilidadProducto(p);
     info.append(this.crear('h2','',p.nombre));if(p.modelo)info.append(this.crear('p','producto-categoria',`Modelo: ${p.modelo}`));
-    const etiquetas=this.crear('div','producto-etiquetas');etiquetas.append(this.crear('span','estado-equipo estado-'+estado.clave,estado.texto));if(p.oferta)etiquetas.append(this.crear('span','insignia-oferta','En oferta'));info.append(etiquetas);
-    info.append(this.crear('p','detalle-precio',precio===null?'Precio a consultar':moneda(precio)),this.crear('p','',estado.detalle));
+    const etiquetas=this.crear('div','producto-etiquetas');etiquetas.append(this.crear('span','estado-equipo estado-'+estado.clave,estado.texto));if(preciosProducto(p).oferta!==null)etiquetas.append(this.crear('span','insignia-oferta','En oferta'));info.append(etiquetas);
+    info.append(this.mostrarPrecios(p,'detalle-precio'),this.crear('p','',estado.detalle));
     if(p.preventa)info.append(this.crear('p','nota-preventa',contactoConfig.condicionesPreventa||'Consulta con FitGear el plazo de entrega, el anticipo y las condiciones de reserva antes de confirmar.'));
     const acciones=this.crear('div','detalle-acciones');acciones.append(this.boton('Solicitar información','boton boton-principal',()=>{cerrar();this.onSolicitud(p);}));
     const agregar=this.boton(this.seleccion.has(p.id)?'✓ En mi cotización':'Agregar a cotización','boton boton-contorno',()=>{this.onSeleccion(p.id);agregar.textContent=this.seleccion.has(p.id)?'✓ En mi cotización':'Agregar a cotización';agregar.setAttribute('aria-pressed',String(this.seleccion.has(p.id)));});agregar.setAttribute('aria-pressed',String(this.seleccion.has(p.id)));acciones.append(agregar);info.append(acciones);
