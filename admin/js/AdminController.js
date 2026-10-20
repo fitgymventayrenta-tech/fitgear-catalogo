@@ -66,7 +66,7 @@ export class AdminController {
   limpiarAcceso(){
     this.vista.comercial=null;this.vista.productos=[];this.productos=[];
     document.querySelectorAll('[data-comercial-dialogo]').forEach(d=>d.remove());
-    for(const id of ['lista-clientes','lista-oportunidades','lista-seguimientos','lista-cotizaciones','lista-ventas','lista-solicitudes'])document.querySelector('#'+id).replaceChildren();
+    for(const id of ['lista-clientes','lista-seguimientos','lista-cotizaciones','lista-ventas','lista-solicitudes'])document.querySelector('#'+id).replaceChildren();
     this.vista.lista.replaceChildren();this.vista.limpiarFormulario();
     this.vista.vistaCatalogo='inventario';this.vista.actualizarVistaCatalogo();
     // Quitar el documento del iframe elimina también sus datos y galerías privadas.
@@ -184,7 +184,7 @@ export class AdminController {
     } catch (error) {
       if(!token||token!==this.modelo.token)return;
       this.vista.resumirSolicitudes(null);
-      for(const id of ['lista-clientes','lista-solicitudes','lista-oportunidades','lista-seguimientos','lista-cotizaciones','lista-ventas'])document.querySelector('#'+id).textContent='No fue posible cargar el módulo comercial. Aplica migracion_modulo_clientes.sql en Supabase y pulsa «Actualizar datos».';
+      for(const id of ['lista-clientes','lista-solicitudes','lista-seguimientos','lista-cotizaciones','lista-ventas'])document.querySelector('#'+id).textContent='No fue posible cargar el módulo comercial. Aplica migracion_modulo_clientes.sql en Supabase y pulsa «Actualizar datos».';
       throw error;
     }
   }

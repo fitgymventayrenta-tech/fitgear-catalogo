@@ -107,7 +107,7 @@ test('una caída de red con resultado incierto no borra fotos posiblemente confi
 
 const {metricasComerciales,validarSolicitudComercial}=await importar('js/comercial.js');
 test('dashboard distingue solicitudes de clientes únicos y tareas pendientes de vencidas',()=>{
-  const m=metricasComerciales({clientes:[{id:1},{id:2}],solicitudes:[{cliente_id:1,estado_comercial:'contactada'},{cliente_id:1,estado_comercial:'cotizada'},{cliente_id:2,estado_comercial:'nueva'}],seguimientos:[{cliente_id:1,siguiente_contacto:'2026-01-02',completado:false},{cliente_id:1,siguiente_contacto:'2025-12-30',completado:false},{cliente_id:1,completado:true}],cotizaciones:[{estado:'borrador'},{estado:'convertida'}],ventas:[{id:1}]},Date.parse('2026-01-01'));
+  const m=metricasComerciales({clientes:[{id:1},{id:2}],solicitudes:[{cliente_id:1,estado:'contactado',estado_comercial:'contactada'},{cliente_id:1,estado:'contactado',estado_comercial:'cotizada'},{cliente_id:2,estado:'pendiente',estado_comercial:'nueva'}],seguimientos:[{cliente_id:1,siguiente_contacto:'2026-01-02',completado:false},{cliente_id:1,siguiente_contacto:'2025-12-30',completado:false},{cliente_id:1,completado:true}],cotizaciones:[{estado:'borrador'},{estado:'convertida'}],ventas:[{id:1}]},Date.parse('2026-01-01'));
   assert.equal(m['total-solicitudes'],3);assert.equal(m['total-clientes'],2);assert.equal(m['solicitudes-contactadas'],1);assert.equal(m['seguimientos-pendientes'],2);assert.equal(m['seguimientos-programados'],1);assert.equal(m['seguimientos-vencidos'],1);assert.equal(m['solicitudes-finalizadas'],1);assert.equal(m['ventas-concretadas'],1);
 });
 test('consulta personalizada y de catálogo permiten correo opcional y validan cantidades',()=>{
@@ -131,4 +131,27 @@ test('búsqueda por uso, idioma, modelo y acentos; filtros y precio desconocido'
 test('no confirma éxito si la respuesta del servidor conserva la máquina oculta',async()=>{
  const m=modeloAdmin();m.solicitar=async()=>[{...producto(),id:5,publicado:false}];
  await assert.rejects(()=>m.guardarProducto({...producto(),id:5,publicado:true}),error=>error.datosGuardados===true&&error.message.includes('publicado'));
+});
+
+const {estadoAtencion,resumenCliente}=await importar('js/comercial.js');
+test('atención independiente de ventas y etapa comercial; conserva atendidos heredados',()=>{
+ assert.equal(estadoAtencion({estado:'pendiente',estado_comercial:'ganada'}),'pendiente');
+ assert.equal(estadoAtencion({estado:'contactado',estado_comercial:'nueva'}),'contactado');
+ assert.equal(estadoAtencion({estado:'finalizado'}),'contactado');
+ const r=resumenCliente({id:1},{solicitudes:[{cliente_id:1,estado:'pendiente'}],ventas:[{id:1,cliente_id:1}]});
+ assert.equal(r.atencion,'pendiente');assert.equal(r.recurrente,true);
+});
+test('recurrencia solo usa ventas del cliente, nunca etiquetas, notas ni cotizaciones',()=>{
+ const cliente={id:1,tipo:'recurrente',observaciones:'Comprador frecuente'};
+ assert.equal(resumenCliente(cliente,{cotizaciones:[{cliente_id:1,estado:'aceptada'}],ventas:[{cliente_id:2}]}).recurrente,false);
+ assert.equal(resumenCliente(cliente,{ventas:[{cliente_id:'1'}]}).recurrente,true);
+ assert.equal(resumenCliente(cliente,{}).atencion,'sin_solicitudes');
+ const datos={solicitudes:[{cliente_id:1,estado:'contactado'},{cliente_id:1,estado:'pendiente'}]};
+ assert.equal(resumenCliente(cliente,datos).atencion,'pendiente');
+});
+test('guardar atención envía solo estado legado, sin convertir una solicitud en venta',async()=>{
+ const m=modeloAdmin(),peticiones=[];const anterior=globalThis.fetch;
+ try{globalThis.fetch=async(url,opciones)=>{peticiones.push(JSON.parse(opciones.body));return new Response(JSON.stringify([{id:1,estado:'contactado'}]),{status:200});};
+ await m.actualizarSolicitud(1,{estado:'contactado'});assert.deepEqual(peticiones,[{estado:'contactado'}]);
+ }finally{globalThis.fetch=anterior;}
 });

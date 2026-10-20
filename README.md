@@ -48,6 +48,14 @@ En los dos proyectos de Vercel: Framework Preset **Other** y Root Directory en l
 
 `dist/` se genera al compilar: no se guarda en Git ni hace falta mantenerlo como copia del código. La URL principal del proyecto ADMIN abre su login.
 
+## Atención de clientes
+
+El directorio muestra el contacto, su atención y sus compras registradas. Cada solicitud se marca **Pendiente** o **Atendido**, independientemente de cotizaciones y ventas. Si tiene alguna solicitud pendiente, el cliente aparece pendiente; sin solicitudes se indica esa condición.
+
+Dentro de **Ver ficha** están las máquinas solicitadas, las notas editables y el historial de ventas. Las notas reutilizan `clientes.observaciones` y la atención reutiliza `solicitudes.estado`; este cambio no necesita ejecutar SQL. Se conservan los datos y estados comerciales anteriores, aunque se retira la pantalla «Oportunidades».
+
+Un cliente con al menos una venta confirmada se muestra como recurrente para su próxima compra. Las cotizaciones y las notas no cuentan como ventas. **Registrar venta** reutiliza la cotización aceptada y la confirmación de pedido existentes, que registran la venta y descuentan inventario. Las herramientas de seguimiento, cotizaciones y pedidos siguen disponibles en **Seguimiento y ventas**.
+
 ## Comprobar cambios
 
 ```sh

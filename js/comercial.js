@@ -1,7 +1,11 @@
-export const ESTADOS_COMERCIALES = {
-  nueva:'Nueva',contactada:'Contactada',en_seguimiento:'En seguimiento',cotizada:'Cotizada',
-  en_negociacion:'En negociación',ganada:'Ganada',perdida:'Perdida'
-};
+export const ESTADOS_ATENCION = {pendiente:'Pendiente',contactado:'Atendido'};
+export const estadoAtencion = solicitud => ['contactado','finalizado'].includes(solicitud.estado)?'contactado':'pendiente';
+export function resumenCliente(cliente,datos={}){
+ const pertenece=fila=>String(fila.cliente_id)===String(cliente.id);
+ const solicitudes=(datos.solicitudes||[]).filter(pertenece),ventas=(datos.ventas||[]).filter(pertenece);
+ const pendientes=solicitudes.filter(s=>estadoAtencion(s)==='pendiente').length;
+ return {solicitudes,ventas,pendientes,atencion:!solicitudes.length?'sin_solicitudes':pendientes?'pendiente':'contactado',recurrente:ventas.length>0};
+}
 export const moneda = valor => `Q ${Number(valor || 0).toLocaleString('es-GT',{minimumFractionDigits:2,maximumFractionDigits:2})}`;
 export const fecha = valor => valor ? new Date(valor).toLocaleString('es-GT',{timeZone:'America/Guatemala'}) : 'Sin programar';
 export const telefonoNormalizado = valor => {
@@ -9,10 +13,10 @@ export const telefonoNormalizado = valor => {
 };
 export function metricasComerciales(datos,ahora=Date.now()) {
   const {clientes=[],solicitudes=[],seguimientos=[],cotizaciones=[],ventas=[]}=datos;
-  const contactados=new Set([...seguimientos.map(s=>s.cliente_id),...solicitudes.filter(s=>!['nueva','perdida'].includes(s.estado_comercial)).map(s=>s.cliente_id)].filter(id=>id!=null).map(String));
+  const contactados=new Set(solicitudes.filter(s=>estadoAtencion(s)==='contactado').map(s=>s.cliente_id).filter(id=>id!=null).map(String));
   return {
     'total-solicitudes':solicitudes.length,
-    'solicitudes-pendientes':solicitudes.filter(s=>s.estado_comercial==='nueva').length,
+    'solicitudes-pendientes':solicitudes.filter(s=>estadoAtencion(s)==='pendiente').length,
     'solicitudes-contactadas':contactados.size,
     'total-clientes':clientes.length,
     'seguimientos-pendientes':seguimientos.filter(s=>!s.completado).length,

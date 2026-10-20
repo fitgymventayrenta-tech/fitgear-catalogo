@@ -1,5 +1,5 @@
-import {CatalogoView} from '../../js/CatalogoView.js?v=20';
-import {normalizarBusqueda} from '../../js/comercial.js?v=20';
+import {CatalogoView} from '../../js/CatalogoView.js?v=21';
+import {normalizarBusqueda} from '../../js/comercial.js?v=21';
 const vista=new CatalogoView({soloLectura:true});let productos=[],modo='previa';
 const lista=document.querySelector('#equipos-previa'),busqueda=document.querySelector('#buscar-previa');
 function renderizar(){

@@ -1,4 +1,4 @@
-import { ESTADOS_COMERCIALES, metricasComerciales, moneda, fecha, telefonoNormalizado, precioProducto } from "../../js/comercial.js?v=20";
+import { ESTADOS_ATENCION, estadoAtencion, resumenCliente, metricasComerciales, moneda, fecha, telefonoNormalizado, precioProducto } from "../../js/comercial.js?v=21";
 export class AdminView {
  constructor(){this.login=document.querySelector('#login');this.panel=document.querySelector('#administracion');this.formLogin=document.querySelector('#form-login');this.formProducto=document.querySelector('#form-producto');this.lista=document.querySelector('#lista-admin');this.mensaje=document.querySelector('#mensaje');this.titulo=document.querySelector('#titulo-formulario');this.salir=document.querySelector('#cerrar-sesion');this.guardar=document.querySelector('#guardar-producto');this.previa=document.querySelector('#vista-previa');this.previewUrl=null;this.imagenActual=null;}
  mostrarPanel(ok){this.login.hidden=ok;this.panel.hidden=!ok;this.salir.hidden=!ok;if(ok)this.mostrarSeccion('dashboard');else this.resumirSolicitudes(null);}
@@ -103,10 +103,10 @@ export class AdminView {
     document.querySelector('#seccion-clientes-movil').onchange=e=>this.mostrarClientes(e.target.value);
     document.querySelector('#agregar-cliente').onclick=()=>this.formCliente();
     document.querySelector('#buscar-cliente').oninput=()=>this.renderDirectorio();
-    for(const id of ['tipo','origen','asesor','departamento'])document.querySelector(`#${id}-cliente`).onchange=()=>this.renderDirectorio();
+    for(const id of ['tipo','origen','asesor','departamento','atencion','compras'])document.querySelector(`#${id}-cliente`).onchange=()=>this.renderDirectorio();
     document.querySelector('#buscar-solicitud').oninput=()=>this.renderSolicitudesFiltradas();
     const estado=document.querySelector('#estado-solicitud');
-    for(const [valor,texto] of Object.entries(ESTADOS_COMERCIALES)){const o=this.elemento('option','',texto);o.value=valor;estado.append(o);}
+    for(const [valor,texto] of Object.entries(ESTADOS_ATENCION)){const o=this.elemento('option','',texto);o.value=valor;estado.append(o);}
     estado.onchange=()=>this.renderSolicitudesFiltradas();
     document.querySelector('#filtro-seguimiento').onchange=()=>this.renderSeguimientos(document.querySelector('#lista-seguimientos'));
   }
@@ -123,7 +123,7 @@ export class AdminView {
     for(const boton of document.querySelectorAll('[data-clientes]')){
       const activo=boton.dataset.clientes===nombre;
       document.querySelector(`#clientes-${boton.dataset.clientes}`).hidden=!activo;
-      if(activo)boton.setAttribute('aria-current','page');else boton.removeAttribute('aria-current');
+      if(activo){boton.setAttribute('aria-current','page');const grupo=boton.closest('.gestion-clientes');if(grupo)grupo.open=true;}else boton.removeAttribute('aria-current');
     }
   }
   mostrarComercial(datos) {
@@ -138,7 +138,6 @@ export class AdminView {
       select.value=previo;
     }
     this.renderDirectorio();this.renderSolicitudesFiltradas();
-    this.renderSolicitudes(document.querySelector('#lista-oportunidades'),datos.solicitudes.filter(s=>!['nueva','ganada','perdida'].includes(s.estado_comercial)));
     this.renderSeguimientos(document.querySelector('#lista-seguimientos'));
     this.renderCotizaciones(document.querySelector('#lista-cotizaciones'),datos.cotizaciones);
     this.renderVentas(document.querySelector('#lista-ventas'),datos.ventas);
@@ -150,12 +149,14 @@ export class AdminView {
     if(!this.comercial)return;
     const lista=document.querySelector('#lista-clientes');lista.replaceChildren();
     const texto=document.querySelector('#buscar-cliente').value.trim().toLocaleLowerCase('es');
-    const clientes=this.comercial.clientes.filter(c=>[c.nombre,c.empresa,c.telefono,c.correo,c.ubicacion_original].join(' ').toLocaleLowerCase('es').includes(texto)&&['tipo','origen','asesor','departamento'].every(k=>!document.querySelector(`#${k}-cliente`).value||c[k]===document.querySelector(`#${k}-cliente`).value));
+    const atencion=document.querySelector('#atencion-cliente').value,compras=document.querySelector('#compras-cliente').value;
+    const clientes=this.comercial.clientes.filter(c=>{const resumen=resumenCliente(c,this.comercial);return (!atencion||resumen.atencion===atencion)&&(!compras||(compras==='recurrente'?resumen.recurrente:!resumen.recurrente))&&[c.nombre,c.empresa,c.telefono,c.correo,c.ubicacion_original].join(' ').toLocaleLowerCase('es').includes(texto)&&['tipo','origen','asesor','departamento'].every(k=>!document.querySelector(`#${k}-cliente`).value||c[k]===document.querySelector(`#${k}-cliente`).value);});
     if(!clientes.length)lista.append(this.elemento('p','','No hay clientes con estos filtros.'));
     for(const c of clientes){
       const fila=this.elemento('article','fila-producto tarjeta-cliente');const info=this.elemento('div','informacion-registro');
-      info.append(this.elemento('strong','nombre-registro',c.nombre),this.metadatos([['Gimnasio / empresa',c.empresa],['Teléfono',c.telefono||'Sin teléfono registrado'],['Ubicación',c.ubicacion_original||[c.departamento,c.municipio].filter(Boolean).join(', ')],['Origen',c.origen],['Tipo',c.tipo]],'datos-registro'));
-      const acciones=this.elemento('div','acciones');acciones.append(this.boton('Ver ficha',()=>this.fichaCliente(c)),this.boton('Editar',()=>this.formCliente(c)));
+      const resumen=resumenCliente(c,this.comercial);
+      info.append(this.elemento('strong','nombre-registro',c.nombre),this.metadatos([['Gimnasio / empresa',c.empresa],['Teléfono',c.telefono||'Sin teléfono registrado'],['Atención',resumen.atencion==='sin_solicitudes'?'Sin solicitudes':ESTADOS_ATENCION[resumen.atencion]],['Compras',resumen.recurrente?`Cliente recurrente · ${resumen.ventas.length} venta(s)`:'Sin compras registradas']],'datos-registro'));
+      const acciones=this.elemento('div','acciones');acciones.append(this.boton('Ver ficha',()=>this.fichaCliente(c)));
       fila.append(info,acciones);lista.append(fila);
     }
     const pendientes=(this.comercial.clientes_fuentes||[]).filter(f=>f.estado==='pendiente');
@@ -167,12 +168,12 @@ export class AdminView {
   renderSolicitudesFiltradas(){
     if(!this.comercial)return;
     const texto=document.querySelector('#buscar-solicitud').value.trim().toLocaleLowerCase('es'),estado=document.querySelector('#estado-solicitud').value;
-    this.renderSolicitudes(document.querySelector('#lista-solicitudes'),this.comercial.solicitudes.filter(s=>(!estado||s.estado_comercial===estado)&&[s.id,s.nombre,...(s.solicitud_productos||[]).map(p=>p.nombre_producto),s.personalizada?.maquina].join(' ').toLocaleLowerCase('es').includes(texto)));
+    this.renderSolicitudes(document.querySelector('#lista-solicitudes'),this.comercial.solicitudes.filter(s=>(!estado||estadoAtencion(s)===estado)&&[s.id,s.nombre,...(s.solicitud_productos||[]).map(p=>p.nombre_producto),s.personalizada?.maquina].join(' ').toLocaleLowerCase('es').includes(texto)));
   }
-  renderSolicitudes(lista,solicitudes){
+  renderSolicitudes(lista,solicitudes,{enFicha=false}={}){
     lista.replaceChildren();if(!solicitudes.length){lista.textContent='No hay solicitudes en esta sección.';return;}
     for(const s of solicitudes){
-      const art=this.elemento('details','solicitud');art.append(this.elemento('summary','',`#${s.id} · ${s.nombre} · ${ESTADOS_COMERCIALES[s.estado_comercial]||s.estado}`));
+      const art=this.elemento('details','solicitud');art.append(this.elemento('summary','',`#${s.id} · ${s.nombre} · ${ESTADOS_ATENCION[estadoAtencion(s)]}`));
       art.append(this.elemento('p','',`${fecha(s.creado_en)} · ${s.origen} · ${s.operacion}`),this.elemento('p','',`${s.telefono}${s.correo?' · '+s.correo:''}`));
       for(const p of s.solicitud_productos||[]){
         const fila=this.elemento('div','solicitud-equipo');
@@ -183,13 +184,17 @@ export class AdminView {
       if(s.tipo==='personalizada'){const d=s.personalizada||{};art.append(this.elemento('p','',`Solicitud personalizada: ${d.cantidad} × ${d.marca||''} ${d.maquina||''}${d.presupuesto!==''&&d.presupuesto!=null?' · Presupuesto '+moneda(d.presupuesto):''}`));}
       art.append(this.elemento('p','',s.mensaje||'Sin comentarios adicionales'));
       const cambios=this.elemento('div','campos');
-      const estado=this.campo(cambios,'estado','Estado','select',s.estado_comercial,Object.entries(ESTADOS_COMERCIALES));
-      const asesor=this.campo(cambios,'asesor','Asesor asignado','text',s.asesor);asesor.maxLength=120;
+      const estado=this.campo(cambios,'estado_atencion','Estado de atención','select',estadoAtencion(s),Object.entries(ESTADOS_ATENCION));
       art.append(cambios);
       const acciones=this.elemento('div','acciones');
-      acciones.append(this.boton('Guardar estado y asesor',()=>this.onComercial('solicitud',{id:s.id,campos:{estado_comercial:estado.value,asesor:asesor.value.trim()}})),this.boton('Ver ficha del cliente',()=>this.fichaCliente(this.cliente(s.cliente_id))),this.boton('Registrar seguimiento',()=>this.formSeguimiento(s)),this.boton('Crear cotización',()=>this.formCotizacion(s)));
-      this.contactos(acciones,s.telefono,s.correo);art.append(acciones);
-      const historial=this.elemento('div');art.append(this.elemento('h3','','Historial de seguimiento'),historial);
+      acciones.append(this.boton('Guardar atención',()=>this.onComercial('solicitud',{id:s.id,campos:{estado:estado.value}})));
+      if(!enFicha)acciones.append(this.boton('Ver ficha del cliente',()=>this.fichaCliente(this.cliente(s.cliente_id))));
+      art.append(acciones);
+      const gestion=this.elemento('details','gestion-solicitud'),contenidoGestion=this.elemento('div');gestion.append(this.elemento('summary','','Cotización y seguimiento'),contenidoGestion);
+      const asesor=this.campo(contenidoGestion,'asesor','Asesor asignado','text',s.asesor);asesor.maxLength=120;
+      const secundarias=this.elemento('div','acciones');secundarias.append(this.boton('Guardar asesor',()=>this.onComercial('solicitud',{id:s.id,campos:{asesor:asesor.value.trim()}})),this.boton('Registrar seguimiento',()=>this.formSeguimiento(s)),this.boton('Crear cotización',()=>this.formCotizacion(s)));
+      this.contactos(secundarias,s.telefono,s.correo);contenidoGestion.append(secundarias);
+      const historial=this.elemento('div');contenidoGestion.append(this.elemento('h3','','Historial de seguimiento'),historial);art.append(gestion);
       this.renderSeguimientos(historial,this.comercial.seguimientos.filter(f=>String(f.solicitud_id)===String(s.id)),false);lista.append(art);
     }
   }
@@ -224,7 +229,7 @@ export class AdminView {
   }
   formCliente(cliente={}){
     this.formulario(cliente.id?'Editar cliente':'Agregar cliente',caja=>{
-      const datos={};for(const [n,e] of [['nombre','Nombre completo *'],['empresa','Empresa o gimnasio'],['telefono','Teléfono (si está disponible)'],['whatsapp','WhatsApp'],['correo','Correo electrónico'],['ubicacion_original','Ubicación original (sin interpretar)'],['departamento','Departamento'],['municipio','Municipio'],['tipo','Tipo de cliente'],['origen','Origen del contacto'],['asesor','Asesor responsable'],['observaciones','Observaciones']]){
+      const datos={};for(const [n,e] of [['nombre','Nombre completo *'],['empresa','Empresa o gimnasio'],['telefono','Teléfono (si está disponible)'],['whatsapp','WhatsApp'],['correo','Correo electrónico'],['ubicacion_original','Ubicación original (sin interpretar)'],['departamento','Departamento'],['municipio','Municipio'],['tipo','Tipo de cliente'],['origen','Origen del contacto'],['asesor','Asesor responsable'],['observaciones','Notas del cliente']]){
         datos[n]=this.campo(caja,n,e,n==='observaciones'?'textarea':n==='correo'?'email':n==='telefono'||n==='whatsapp'?'tel':'text',cliente[n]??({tipo:'particular',origen:'manual'}[n]||''));
       }
       datos.nombre.required=true;datos.nombre.minLength=3;datos.nombre.maxLength=120;datos.telefono.required=false;datos.telefono.pattern='[+0-9 ()-]{8,22}';datos.telefono.maxLength=22;
@@ -237,18 +242,46 @@ export class AdminView {
   }
   fichaCliente(cliente,existente=null){
     if(!cliente)throw new Error('La solicitud no tiene una ficha vinculada. Revisa la migración de clientes.');
-    const modal=existente?{contenido:existente}:this.abrirDialogo(cliente.nombre);const {contenido}=modal;contenido.replaceChildren();if(modal.dialogo)modal.dialogo.dataset.fichaCliente=cliente.id;const datos=this.comercial;const esCliente=x=>String(x.cliente_id)===String(cliente.id);
-    contenido.append(this.metadatos([['Empresa',cliente.empresa],['Teléfono',cliente.telefono],['Correo',cliente.correo],['Ubicación original',cliente.ubicacion_original],['Ubicación',[cliente.departamento,cliente.municipio].filter(Boolean).join(', ')],['Tipo',cliente.tipo],['Origen',cliente.origen],['Asesor',cliente.asesor],['Observaciones',cliente.observaciones]]));
-    for(const fuente of datos.clientes_fuentes||[]){if(String(fuente.cliente_id)!==String(cliente.id))continue;contenido.append(this.elemento('p','',`Fuente: ${fuente.documento}, página ${fuente.pagina}, fila ${fuente.fila}. ${fuente.observaciones||''}`));}
-    const acciones=this.elemento('div','acciones');acciones.append(this.boton('Editar cliente',()=>this.formCliente(cliente)),this.boton('Nueva solicitud',()=>this.formSolicitudCliente(cliente)),this.boton('Registrar seguimiento',()=>this.formSeguimiento(null,cliente)));this.contactos(acciones,cliente.whatsapp||cliente.telefono,cliente.correo);contenido.append(acciones);
-    const seccion=(titulo)=>{const bloque=this.elemento('details','seccion-ficha');bloque.append(this.elemento('summary','',titulo));const caja=this.elemento('div','seccion-ficha-contenido');bloque.append(caja);contenido.append(bloque);return caja;};
-    const propias=datos.solicitudes.filter(esCliente);
-    const maquinas=seccion('Máquinas solicitadas');for(const s of propias){for(const p of s.solicitud_productos||[])maquinas.append(this.elemento('p','',`Solicitud #${s.id}: ${p.cantidad} × ${p.nombre_producto}`));if(s.personalizada)maquinas.append(this.elemento('p','',`Solicitud #${s.id}: ${s.personalizada.cantidad} × ${s.personalizada.maquina} (personalizada)`));}
-    this.renderSolicitudes(seccion('Solicitudes anteriores'),propias);
-    this.renderCotizaciones(seccion('Cotizaciones'),datos.cotizaciones.filter(esCliente));
-    this.renderSeguimientos(seccion('Historial de seguimientos'),datos.seguimientos.filter(esCliente),false);
-    this.renderSeguimientos(seccion('Próximas actividades'),datos.seguimientos.filter(f=>esCliente(f)&&!f.completado&&f.siguiente_contacto),false);
-    this.renderVentas(seccion('Compras realizadas'),datos.ventas.filter(esCliente));
+    const modal=existente?{contenido:existente}:this.abrirDialogo(cliente.nombre),{contenido}=modal;
+    const anteriores=new Set([...contenido.querySelectorAll(':scope>.seccion-ficha[open]')].map(d=>d.dataset.seccion));
+    const nota=contenido.querySelector('[name=notas_cliente]'),borrador=nota&&nota.value!==nota.defaultValue?nota.value:null;
+    contenido.replaceChildren();if(modal.dialogo)modal.dialogo.dataset.fichaCliente=cliente.id;
+    const datos=this.comercial,resumen=resumenCliente(cliente,datos),esCliente=x=>String(x.cliente_id)===String(cliente.id);
+    contenido.append(this.metadatos([['Teléfono',cliente.telefono||'Sin teléfono registrado'],['Empresa / gimnasio',cliente.empresa],['Correo',cliente.correo],['Ubicación',cliente.ubicacion_original||[cliente.departamento,cliente.municipio].filter(Boolean).join(', ')],['Atención',resumen.atencion==='sin_solicitudes'?'Sin solicitudes':ESTADOS_ATENCION[resumen.atencion]],['Compras',resumen.recurrente?`Cliente recurrente · ${resumen.ventas.length} venta(s) registrada(s)`:'Sin compras registradas · Primera compra pendiente']]));
+    const acciones=this.elemento('div','acciones');acciones.append(this.boton('Editar datos',()=>this.formCliente(cliente)));this.contactos(acciones,cliente.whatsapp||cliente.telefono,cliente.correo);contenido.append(acciones);
+    const seccion=(titulo,id)=>{const bloque=this.elemento('details','seccion-ficha');bloque.dataset.seccion=id;bloque.open=anteriores.has(id)||!existente&&id==='intereses';bloque.append(this.elemento('summary','',titulo));const caja=this.elemento('div','seccion-ficha-contenido');bloque.append(caja);contenido.append(bloque);return caja;};
+    const intereses=seccion('Solicitudes y máquinas de interés','intereses');this.renderSolicitudes(intereses,resumen.solicitudes,{enFicha:true});intereses.append(this.boton('Nueva solicitud',()=>this.formSolicitudCliente(cliente)));
+    const notas=seccion('Notas del cliente','notas'),form=this.elemento('form','notas-cliente');
+    const texto=this.campo(form,'notas_cliente','Conversaciones, necesidades y preferencias','textarea',cliente.observaciones||'');texto.defaultValue=cliente.observaciones||'';if(borrador!==null)texto.value=borrador;texto.maxLength=5000;texto.rows=6;
+    const guardar=this.elemento('button','guardar-formulario','Guardar notas');guardar.type='submit';const aviso=this.elemento('p','ayuda');aviso.setAttribute('role','status');form.append(guardar,aviso);notas.append(form);
+    form.onsubmit=async e=>{e.preventDefault();if(guardar.disabled)return;guardar.disabled=true;aviso.textContent='Guardando notas…';try{await this.onComercial('cliente',{id:cliente.id,observaciones:texto.value});}catch(error){aviso.textContent=error.message;aviso.className='error';}finally{guardar.disabled=false;}};
+    notas.append(this.elemento('h3','','Seguimientos registrados'));this.renderSeguimientos(notas.appendChild(this.elemento('div')),datos.seguimientos.filter(esCliente),false);notas.append(this.boton('Registrar seguimiento',()=>this.formSeguimiento(null,cliente)));
+    const compras=seccion(`Historial de ventas (${resumen.ventas.length})`,'ventas');this.renderVentas(compras,resumen.ventas);compras.append(this.boton('Registrar venta',()=>this.formVentaCliente(cliente)));
+    const cotizaciones=seccion('Cotizaciones','cotizaciones');this.renderCotizaciones(cotizaciones,datos.cotizaciones.filter(esCliente));
+    const adicionales=seccion('Datos adicionales','datos');adicionales.append(this.metadatos([['Tipo',cliente.tipo],['Origen',cliente.origen],['Asesor',cliente.asesor]]));
+    for(const fuente of datos.clientes_fuentes||[]){if(esCliente(fuente))adicionales.append(this.elemento('p','ayuda',`Fuente: ${fuente.documento}, página ${fuente.pagina}, fila ${fuente.fila}. ${fuente.observaciones||''}`));}
+  }
+  formVentaCliente(cliente){
+    const resumen=resumenCliente(cliente,this.comercial),vendidas=new Set(resumen.ventas.map(v=>String(v.solicitud_id)));
+    const cotizaciones=this.comercial.cotizaciones.filter(c=>String(c.cliente_id)===String(cliente.id)&&c.estado==='aceptada'&&!vendidas.has(String(c.solicitud_id)));
+    if(cotizaciones.length===1){this.formPedido(cotizaciones[0]);return;}
+    if(cotizaciones.length>1){
+      const dialogo=this.formulario('Elegir cotización aceptada',caja=>{const seleccion=this.campo(caja,'cotizacion','Cotización','select',String(cotizaciones[0].id),cotizaciones.map(c=>[String(c.id),`#${c.id} · ${moneda(c.total)}`]));return()=>cotizaciones.find(c=>String(c.id)===seleccion.value);},c=>this.formPedido(c));
+      dialogo.querySelector('.guardar-formulario').textContent='Continuar';return;
+    }
+    const existentes=this.comercial.cotizaciones.filter(c=>String(c.cliente_id)===String(cliente.id)&&c.estado!=='convertida'&&!vendidas.has(String(c.solicitud_id)));
+    if(existentes.length){
+      const ficha=[...this.panel.querySelectorAll('[data-ficha-cliente]')].find(d=>String(d.dataset.fichaCliente)===String(cliente.id));
+      const seccion=ficha?.querySelector('[data-seccion=cotizaciones]');
+      if(seccion){seccion.open=true;seccion.scrollIntoView({block:'start',behavior:'smooth'});return;}
+    }
+    const pendientes=resumen.solicitudes.filter(s=>!vendidas.has(String(s.id)));
+    if(!pendientes.length){this.formSolicitudCliente(cliente);return;}
+    const dialogo=this.formulario('Preparar venta',caja=>{
+      caja.append(this.elemento('p','ancho-completo','Primero prepara una cotización y márcala como aceptada. Después podrás confirmar la venta; solo entonces se descontarán existencias y aparecerá en el historial.'));
+      const seleccion=this.campo(caja,'solicitud','Solicitud del cliente','select',String(pendientes[0].id),pendientes.map(s=>[String(s.id),`#${s.id} · ${s.tipo==='personalizada'?s.personalizada?.maquina:(s.solicitud_productos||[]).map(p=>p.nombre_producto).join(', ')||'Equipos solicitados'}`]));
+      return()=>pendientes.find(s=>String(s.id)===seleccion.value);
+    },s=>this.formCotizacion(s));dialogo.querySelector('.guardar-formulario').textContent='Preparar cotización';
   }
   formSolicitudCliente(cliente){
     if(!cliente.telefono){this.notificar('Agrega un teléfono real en la ficha antes de crear una solicitud.',true);return;}

@@ -42,14 +42,21 @@ BEGIN
  EXCEPTION WHEN raise_exception THEN IF SQLERRM<>'Acceso ADMIN requerido' THEN RAISE; END IF; END;
 END $$;
 SET fitgear.test_admin='true';
+UPDATE public.solicitudes SET estado='contactado' WHERE id=:solicitud;
+UPDATE public.clientes SET observaciones='Conversación y preferencias de prueba' WHERE id=:cliente;
+SELECT pg_temp.verificar((SELECT count(*)=0 FROM public.ventas WHERE cliente_id=:cliente),'atender y guardar notas no registra ventas');
 SELECT public.guardar_seguimiento(jsonb_build_object('cliente_id',:cliente,'solicitud_id',:solicitud,'medio','llamada','responsable','Prueba local','resumen','Contacto sin cerrar venta','proxima_accion','Enviar cotización','siguiente_contacto',now()+interval '1 day')) AS seguimiento \gset
-SELECT pg_temp.verificar((SELECT estado_comercial='en_seguimiento' FROM public.solicitudes WHERE id=:solicitud),'contactar no finaliza la oportunidad');
+SELECT pg_temp.verificar((SELECT estado_comercial='en_seguimiento' FROM public.solicitudes WHERE id=:solicitud),'el seguimiento conserva la etapa comercial');
 SELECT public.completar_seguimiento(:seguimiento);
 SELECT pg_temp.verificar((SELECT completado AND completado_en IS NOT NULL FROM public.seguimientos WHERE id=:seguimiento),'completar conserva historial');
 SELECT public.guardar_cotizacion(jsonb_build_object('solicitud_id',:solicitud,'items',jsonb_build_array(jsonb_build_object('producto_id',:producto,'cantidad',2,'precio',900)))) AS cotizacion \gset
 SELECT pg_temp.verificar((SELECT total=1800 FROM public.cotizaciones WHERE id=:cotizacion),'total calculado en servidor');
 SELECT public.cambiar_cotizacion(:cotizacion,'aceptada');
 SELECT public.confirmar_venta(:cotizacion,500) AS venta \gset
+SELECT pg_temp.verificar((SELECT estado='contactado' FROM public.solicitudes WHERE id=:solicitud),'confirmar venta no modifica estado de atención');
+SELECT pg_temp.verificar((SELECT observaciones='Conversación y preferencias de prueba' FROM public.clientes WHERE id=:cliente),'notas conservadas al registrar venta');
+SELECT pg_temp.verificar((SELECT estado='pendiente' FROM public.solicitudes WHERE id=:segunda),'otra solicitud del mismo comprador conserva atención pendiente');
+SELECT pg_temp.verificar((SELECT count(*)=1 FROM public.ventas WHERE cliente_id=:cliente),'historial único de ventas del cliente');
 SELECT pg_temp.verificar((SELECT existencias=1 AND estado='disponible' FROM public.productos WHERE id=:producto),'venta parcial conserva unidad disponible');
 SELECT public.registrar_pago(:venta,1300,'transferencia','Prueba local');
 SELECT pg_temp.verificar((SELECT sum(monto)=1800 FROM public.pagos WHERE venta_id=:venta),'anticipo y pago completan saldo');

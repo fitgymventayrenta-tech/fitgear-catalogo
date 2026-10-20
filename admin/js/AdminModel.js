@@ -1,5 +1,5 @@
 
-import { supabaseConfig } from "../../js/supabase.js?v=20";
+import { supabaseConfig } from "../../js/supabase.js?v=21";
 
 export class AdminModel {
   constructor() {
@@ -303,7 +303,7 @@ export class AdminModel {
   async actualizarSolicitud(id,campos) {
     this.comprobarSesion();
     const permitidos={};
-    for(const nombre of ['estado_comercial','asesor'])if(nombre in campos)permitidos[nombre]=campos[nombre];
+    for(const nombre of ['estado','estado_comercial','asesor'])if(nombre in campos)permitidos[nombre]=campos[nombre];
     const filas=await this.solicitar(`/rest/v1/solicitudes?id=eq.${encodeURIComponent(id)}`,{
       method:'PATCH',headers:{Prefer:'return=representation'},body:JSON.stringify(permitidos)
     });
