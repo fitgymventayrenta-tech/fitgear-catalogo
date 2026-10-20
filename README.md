@@ -1,34 +1,52 @@
 # FitGear Venta y Renta
 
-Catálogo público y administrador con Supabase. Ambos se mantienen en este repositorio y se publican como dos proyectos independientes en Vercel.
+Catálogo público y administrador con Supabase. Un repositorio, dos proyectos de Vercel y una misma base de datos.
 
-## Archivos que se mantienen
+## Dónde está cada cosa
 
-| Carpeta / archivo | Uso |
-| --- | --- |
-| `index.html`, `js/`, `css/style.css` | Catálogo público |
-| `admin/`, `css/admin.css`, `css/vista-catalogo.css` | Administrador, CRM y vista previa |
-| `Logo Fit Gear.png` | Logotipo utilizado por la web |
-| `js/config/` | Configuración pública de Supabase y contacto |
-| `scripts/` | Generación de los sitios y controles automáticos |
-| `supabase/` | Migraciones funcionales y de seguridad; diagnóstico |
-| `tests/`, `.github/workflows/` | Pruebas funcionales y de seguridad que se conservan |
-| `vercel.json` | Cabeceras de seguridad para Vercel |
-| `.gitignore`, `.vercelignore` | Exclusión de archivos privados y generados |
-| `docs/AUDITORIA_SEGURIDAD_FITGEAR.md` | Resultados de la auditoría y configuración pendiente |
+```text
+index.html                       Página pública
+Logo Fit Gear.png                Logotipo
+js/                              Código del catálogo y configuración compartida
+  app.js                         Inicio del catálogo
+  CatalogoController.js          Búsquedas, selección y solicitudes
+  CatalogoView.js                Tarjetas, fotos y detalles
+  ProductoModel.js               Datos del catálogo y envío de solicitudes
+  comercial.js                   Validaciones y utilidades compartidas
+  supabase.js                    URL y clave pública de Supabase
+  contacto.js                    Información de contacto
+admin/
+  index.html                     Acceso y panel administrativo
+  vista-catalogo.html             Vista previa del catálogo
+  js/
+    app.js                       Inicio del administrador
+    AdminController.js           Acciones del administrador
+    AdminView.js                 Pantallas y formularios
+    AdminModel.js                Sesión y operaciones de datos
+    vista-catalogo.js             Vista previa de máquinas
+css/                             Estilos públicos, administrativos y vista previa
+supabase/                        Migraciones y diagnóstico de la base de datos
+scripts/                         Build y comprobaciones automáticas
+tests/                          Pruebas funcionales y de seguridad
+.github/workflows/seguridad.yml   Comprobaciones en GitHub
+vercel.json                      Cabeceras de seguridad
+AUDITORIA_SEGURIDAD_FITGEAR.md     Informe y configuraciones pendientes
+```
 
-No guardar contraseñas ni claves `service_role` en el navegador. La clave pública de Supabase necesita políticas RLS correctas. No se incluye información personal de clientes en los archivos del sitio.
+Los archivos están agrupados por uso. No hay subcarpetas de un solo archivo para modelos, vistas, controladores, configuración ni utilidades.
 
-## Publicar en Vercel
+## Ejecutar y publicar
 
-En ambos proyectos: Framework Preset **Other**, Root Directory en la raíz del repositorio.
+Para ver el proyecto localmente, utiliza un servidor estático desde esta carpeta, por ejemplo `python3 -m http.server 8000`. El catálogo abre en `/` y el administrador en `/admin/`.
+
+En los dos proyectos de Vercel: Framework Preset **Other** y Root Directory en la raíz del repositorio.
 
 | Proyecto | Build Command | Output Directory |
 | --- | --- | --- |
 | Catálogo | `node scripts/build-static.mjs catalogo` | `dist/catalogo` |
 | Administrador | `node scripts/build-static.mjs admin` | `dist/admin` |
 
-`dist/` se genera al compilar: no se sube a Git y no hace falta mantener una copia local. El administrador abre el login desde `/` y comparte la misma base de datos del catálogo.
+`dist/` se genera al compilar: no se guarda en Git ni hace falta mantenerlo como copia del código. La URL principal del proyecto ADMIN abre su login.
 
 ## Comprobar cambios
 
@@ -39,16 +57,14 @@ node scripts/build-static.mjs catalogo
 node scripts/build-static.mjs admin
 ```
 
-Las pruebas SQL, sus fixtures y `scripts/test-crm-auth.mjs` son **solo para una base local vacía de pruebas**, nunca para la base comercial. El workflow de GitHub prepara su propio PostgreSQL temporal.
+Las pruebas SQL y sus archivos `tests/supabase_*.sql` son exclusivamente para una base local vacía de pruebas. **Nunca ejecutarlos en la base comercial.** GitHub utiliza un PostgreSQL temporal para estas comprobaciones.
 
-## Base de datos y seguridad
+## Base de datos y archivos privados
 
-Las migraciones se conservan porque sirven para mantener y recuperar el proyecto. No ejecutarlas indiscriminadamente: algunas cambian permisos y presuponen la estructura existente.
+Las migraciones de `supabase/` se conservan para mantener y recuperar el sistema: no son archivos duplicados. No ejecutarlas indiscriminadamente; algunas cambian permisos y presuponen la estructura existente.
 
-Para la nueva protección de Supabase, revisar primero [el informe de seguridad](docs/AUDITORIA_SEGURIDAD_FITGEAR.md), verificar respaldo y membresía ADMIN y utilizar el diagnóstico `supabase/verificar_auditoria_seguridad.sql`. La migración de auditoría no fue aplicada a producción por el asistente.
+Antes de aplicar la migración de auditoría, leer [el informe de seguridad](AUDITORIA_SEGURIDAD_FITGEAR.md), verificar respaldo, políticas y membresía ADMIN. Esa migración no fue aplicada a producción por el asistente.
 
-## Limpieza del proyecto
+No guardar contraseñas, datos de clientes ni claves `service_role` en el código ni en las salidas publicadas. La configuración del navegador utiliza una clave pública y necesita RLS correctamente aplicada.
 
-Se retiraron las copias generadas, los datos privados de importación, dos scripts históricos de carga/corrección y las pruebas puntuales reemplazadas por las comprobaciones actuales. Se conservan las pruebas utilizadas por GitHub y la prueba de navegador con cabeceras de seguridad.
-
-Antes de retirar esos archivos se creó y verificó un ZIP fuera del proyecto. La limpieza no modifica Supabase, imágenes de Storage ni registros de clientes o máquinas. El informe de auditoría conserva la evidencia histórica: algunas pruebas que cita ya están archivadas y no forman parte del proyecto actual.
+La reorganización aplanó las carpetas sin fusionar la lógica de los módulos. Se conservaron las pruebas, la seguridad y la separación de los dos sitios. Los archivos fuente anteriores se guardaron en un ZIP externo al proyecto antes de moverlos.

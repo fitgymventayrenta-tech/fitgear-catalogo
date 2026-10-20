@@ -1,7 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
-let codigo=await readFile(new URL('../admin/js/models/AdminModel.js',import.meta.url),'utf8');
+let codigo=await readFile(new URL('../admin/js/AdminModel.js',import.meta.url),'utf8');
 codigo=codigo.replace(/import \{ supabaseConfig \} from [^;]+;/,'const supabaseConfig={url:"https://test.supabase.co",key:"sb_publishable_test"};');
 const {AdminModel}=await import('data:text/javascript;base64,'+Buffer.from(codigo).toString('base64'));
 const respuesta=(datos,status=200)=>new Response(status===204?null:JSON.stringify(datos),{status,headers:{'Content-Type':'application/json'}});

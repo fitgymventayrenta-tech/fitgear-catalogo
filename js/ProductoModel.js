@@ -1,6 +1,6 @@
-import { validarSolicitudComercial, normalizarBusqueda, textoBusquedaProducto, precioProducto, disponibilidadProducto } from "../utils/comercial.js?v=18";
+import { validarSolicitudComercial, normalizarBusqueda, textoBusquedaProducto, precioProducto, disponibilidadProducto } from "./comercial.js?v=20";
 
-import { supabaseConfig } from "../config/supabase.js?v=18";
+import { supabaseConfig } from "./supabase.js?v=20";
 
 export class ProductoModel {
   constructor() {

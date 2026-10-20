@@ -5,13 +5,13 @@ import { readFile } from 'node:fs/promises';
 async function importar(ruta) {
   let codigo = await readFile(new URL('../' + ruta, import.meta.url), 'utf8');
   codigo = codigo.replace(/import \{ supabaseConfig \} from [^;]+;/, 'const supabaseConfig={url:"https://test.supabase.co",key:"sb_publishable_test"};');
-  const helper=Buffer.from(await readFile(new URL('../js/utils/comercial.js',import.meta.url),'utf8')).toString('base64');
-  codigo=codigo.replace(/from "[^"]*utils\/comercial\.js(?:\?[^"]*)?"/,`from "data:text/javascript;base64,${helper}"`);
+  const helper=Buffer.from(await readFile(new URL('../js/comercial.js',import.meta.url),'utf8')).toString('base64');
+  codigo=codigo.replace(/from "[^"]*comercial\.js(?:\?[^"]*)?"/,`from "data:text/javascript;base64,${helper}"`);
   return import('data:text/javascript;base64,' + Buffer.from(codigo).toString('base64'));
 }
-const { AdminModel } = await importar('admin/js/models/AdminModel.js');
-const { ProductoModel } = await importar('js/models/ProductoModel.js');
-const { AdminController } = await importar('admin/js/controllers/AdminController.js');
+const { AdminModel } = await importar('admin/js/AdminModel.js');
+const { ProductoModel } = await importar('js/ProductoModel.js');
+const { AdminController } = await importar('admin/js/AdminController.js');
 const producto = () => ({nombre:'Prensa',marca:'FitGear',descripcion:'Equipo profesional',precio:1500,existencias:2,estado:'disponible',oferta:false});
 const modeloAdmin = () => { const m=new AdminModel();m.token='token';m.expira=Date.now()+60000;return m; };
 
@@ -105,7 +105,7 @@ test('una caída de red con resultado incierto no borra fotos posiblemente confi
   const c=new AdminController(modelo,vista);await c.guardarProducto({preventDefault(){}});assert.deepEqual(eliminadas,[]);
 });
 
-const {metricasComerciales,validarSolicitudComercial}=await importar('js/utils/comercial.js');
+const {metricasComerciales,validarSolicitudComercial}=await importar('js/comercial.js');
 test('dashboard distingue solicitudes de clientes únicos y tareas pendientes de vencidas',()=>{
   const m=metricasComerciales({clientes:[{id:1},{id:2}],solicitudes:[{cliente_id:1,estado_comercial:'contactada'},{cliente_id:1,estado_comercial:'cotizada'},{cliente_id:2,estado_comercial:'nueva'}],seguimientos:[{cliente_id:1,siguiente_contacto:'2026-01-02',completado:false},{cliente_id:1,siguiente_contacto:'2025-12-30',completado:false},{cliente_id:1,completado:true}],cotizaciones:[{estado:'borrador'},{estado:'convertida'}],ventas:[{id:1}]},Date.parse('2026-01-01'));
   assert.equal(m['total-solicitudes'],3);assert.equal(m['total-clientes'],2);assert.equal(m['solicitudes-contactadas'],1);assert.equal(m['seguimientos-pendientes'],2);assert.equal(m['seguimientos-programados'],1);assert.equal(m['seguimientos-vencidos'],1);assert.equal(m['solicitudes-finalizadas'],1);assert.equal(m['ventas-concretadas'],1);

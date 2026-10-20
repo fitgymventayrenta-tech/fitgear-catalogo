@@ -1,7 +1,7 @@
 
-import { ProductoModel } from "./models/ProductoModel.js?v=18";
-import { CatalogoView } from "./views/CatalogoView.js?v=18";
-import { CatalogoController } from "./controllers/CatalogoController.js?v=18";
+import { ProductoModel } from "./ProductoModel.js?v=20";
+import { CatalogoView } from "./CatalogoView.js?v=20";
+import { CatalogoController } from "./CatalogoController.js?v=20";
 
 const modelo = new ProductoModel();
 const vista = new CatalogoView();

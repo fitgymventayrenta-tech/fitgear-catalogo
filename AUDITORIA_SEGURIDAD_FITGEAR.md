@@ -60,14 +60,14 @@ No se detectaron claves privadas o `service_role` mediante los patrones/JWT revi
 - `scripts/build-static.mjs`: mantiene salidas separadas, comprueba extensiones, rechaza enlaces simbólicos, archivos sensibles y patrones de claves privilegiadas; incluye la hoja CSS externa de la vista previa y genera `robots.txt` apropiado para ADMIN.
 - `vercel.json`: cabeceras para ambos proyectos. `frame-ancestors 'self'` permite el iframe interno y bloquea el encuadre desde otros orígenes; no se usa DENY porque rompería esa vista.
 - `admin/vista-catalogo.html` y `css/vista-catalogo.css`: CSS inline trasladado a archivo para hacer compatible una CSP estricta.
-- `admin/js/models/AdminModel.js`: mensajes genéricos de login, expiración automática, callback de cierre, revocación remota y comprobación de rutas.
-- `admin/js/controllers/AdminController.js`: limpieza única para salir/expirar/401, eliminación del documento del iframe y prevención de repoblación por respuestas tardías.
+- `admin/js/AdminModel.js`: mensajes genéricos de login, expiración automática, callback de cierre, revocación remota y comprobación de rutas.
+- `admin/js/AdminController.js`: limpieza única para salir/expirar/401, eliminación del documento del iframe y prevención de repoblación por respuestas tardías.
 - Entradas HTML y módulos de `admin/js/` y `js/`: versión de caché actualizada a 18.
 - `supabase/migracion_auditoria_seguridad.sql`: membresía, políticas restrictivas, permisos por columna, protección de Storage y registro técnico de auditoría. Preparada; **no aplicada a producción**.
 - `supabase/verificar_auditoria_seguridad.sql`: diagnóstico de solo lectura que lista políticas, funciones privilegiadas, vistas y permisos sin consultar filas comerciales.
 - `scripts/check-security.mjs`: secretos por patrones/JWT, archivos privados, sintaxis Node y sumideros DOM/ejecución inseguros. Incluye archivos nuevos no ignorados.
 - `.github/workflows/seguridad.yml`: CI con permisos `contents: read`, Actions fijadas por commit, sin credenciales persistidas, pruebas Node, builds y PostgreSQL temporal.
-- Nuevas pruebas: `tests/seguridad.test.mjs`, `tests/seguridad.integration.sql`, `tests/seguridad.setup.sql`, `tests/fixtures/supabase_auth_local.sql`, `tests/seguridad.browser.mjs`, `tests/servidor-seguridad.mjs` y `scripts/test-crm-auth.mjs`.
+- Nuevas pruebas: `tests/seguridad.test.mjs`, `tests/seguridad.integration.sql`, `tests/seguridad.setup.sql`, `tests/supabase_auth_local.sql`, `tests/seguridad.browser.mjs`, `tests/servidor-seguridad.mjs` y `scripts/test-crm-auth.mjs`.
 
 No se borraron imágenes, productos, clientes, tablas ni historiales comerciales. No se cambiaron dominios, no se agregaron servicios de pago y no se reescribió Git.
 
@@ -143,7 +143,7 @@ Estado: **REQUIERE CONFIGURACIÓN MANUAL**.
 1. Antes de aplicar nada, verificar respaldo/posibilidad de restauración y guardar las definiciones actuales de políticas, privilegios y funciones. No se ha comprobado que exista un backup.
 2. Ejecutar primero `supabase/verificar_auditoria_seguridad.sql` como diagnóstico de solo lectura y revisar funciones/vistas adicionales no incluidas en el repositorio. Antes de la migración puede no existir la tabla de auditoría; el diagnóstico enumera lo que encuentre.
 3. Confirmar que la cuenta ADMIN real ya está en `public.administradores` y que esa tabla corresponde al modelo de roles utilizado. La migración conserva membresías existentes, pero si el sistema real obtiene roles de otro lugar, la nueva `es_admin()` puede bloquear el acceso administrativo. **No aplicar hasta revisar esta condición.**
-4. Con respaldo verificado y la membresía confirmada, revisar y aplicar `supabase/migracion_auditoria_seguridad.sql` después de las migraciones funcionales. No ejecutar `tests/fixtures/` ni `tests/seguridad.setup.sql` en Supabase.
+4. Con respaldo verificado y la membresía confirmada, revisar y aplicar `supabase/migracion_auditoria_seguridad.sql` después de las migraciones funcionales. No ejecutar `tests/supabase_*.sql` ni `tests/seguridad.setup.sql` en Supabase.
 5. Repetir el diagnóstico. Comprobar de forma controlada con una cuenta ADMIN y otra sin privilegios antes de dar por protegida producción.
 6. Revisar Auth: deshabilitar altas públicas si solo se crean administradores por invitación; límites de intentos; política de contraseñas; sesiones; MFA y CAPTCHA según disponibilidad y necesidad. No basta un límite en el JavaScript del navegador. La integración CAPTCHA exige verificación real compatible con Auth/servidor, no solo mostrar un widget.
 7. Para impedir que el formulario público sea abusado cambiando teléfonos, planificar un endpoint con CAPTCHA/rate limit de servidor y cerrar la vía de RPC directa que lo eluda. No se implementó un CAPTCHA falso ni un secreto en el cliente.

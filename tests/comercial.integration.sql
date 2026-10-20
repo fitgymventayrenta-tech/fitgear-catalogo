@@ -1,4 +1,4 @@
--- SOLO en la base temporal creada con tests/fixtures/supabase_local.sql.
+-- SOLO en la base temporal creada con tests/supabase_local.sql.
 -- Toda la prueba termina en ROLLBACK. Nunca apuntar estos tests a producción.
 \set ON_ERROR_STOP on
 BEGIN;

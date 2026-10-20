@@ -1,5 +1,5 @@
 
-import { supabaseConfig } from "../../../js/config/supabase.js?v=18";
+import { supabaseConfig } from "../../js/supabase.js?v=20";
 
 export class AdminModel {
   constructor() {
@@ -15,7 +15,7 @@ export class AdminModel {
     if (!/^https:\/\/[a-z0-9-]+\.supabase\.co$/i.test(this.url)) {
       throw new Error(
         "La Project URL de Supabase es incorrecta. " +
-        "Revisa js/config/supabase.js."
+        "Revisa js/supabase.js."
       );
     }
 
